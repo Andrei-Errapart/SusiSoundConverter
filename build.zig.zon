@@ -1,0 +1,12 @@
+.{
+    .name = .convertsound,
+    .version = "0.1.0",
+    .fingerprint = 0xe6418066403678bf,
+    .minimum_zig_version = "0.16.0-dev.2860+9c5460316",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
