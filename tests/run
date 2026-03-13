@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Run all tests, or only those matching the given prefix.
+# Usage: tests/run [TEST_PREFIX]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PREFIX="${1:-}"
+
+passed=0
+failed=0
+skipped=0
+
+for test_dir in "$SCRIPT_DIR"/*/; do
+    test_name="$(basename "$test_dir")"
+
+    if [[ -n "$PREFIX" && "$test_name" != "$PREFIX"* ]]; then
+        continue
+    fi
+
+    if [[ ! -x "$test_dir/run" ]]; then
+        echo "SKIP $test_name (no executable 'run' script)"
+        ((skipped++))
+        continue
+    fi
+
+    echo "---- $test_name ----"
+    if "$test_dir/run"; then
+        echo "PASS $test_name"
+        ((passed++))
+    else
+        echo "FAIL $test_name"
+        ((failed++))
+    fi
+done
+
+echo ""
+echo "Results: $passed passed, $failed failed, $skipped skipped"
+[[ $failed -eq 0 ]]
