@@ -7,6 +7,11 @@ const Allocator = std.mem.Allocator;
 const HEADER_SIZE: usize = 0x300;
 const PRIMARY_OFF: usize = 0x004;
 const PRIMARY_COUNT: usize = 48;
+const MIDDLE_OFF: usize = 0x094;
+const MIDDLE_COUNT: usize = 18; // 9 pairs
+const PADDING_END: usize = 0x0AA; // end of "padding" area before DSU region
+const DSU_PTR_OFF: usize = 0x0AA;
+const DSU_PTR_END: usize = 0x0CE;
 const EXTENDED_OFF: usize = 0x100;
 const EXTENDED_COUNT: usize = 40;
 const CONFIG_OFF: usize = 0x0CE;
@@ -134,8 +139,8 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8) !void {
         try printPairTable(w, &ext_addrs, EXTENDED_OFF, data.len);
     }
 
-    // DSU user sound pointers (0x0AA–0x0CD)
-    try dumpDsuPointers(w, data);
+    // Middle table (DX4) or DSU user sound pointers — detect which
+    try dumpMiddleRegion(w, data, &ext_addrs);
 
     // Configuration region
     try w.print("\n--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---\n", .{});
@@ -219,10 +224,55 @@ fn printPairTable(w: *Io.Writer, addrs: []const ?u24, base_off: usize, file_size
     }
 }
 
+fn dumpMiddleRegion(w: *Io.Writer, data: []const u8, ext_addrs: []const ?u24) !void {
+    // Detect region type: if 0x094-0x0A9 has non-FF data, it's a DX4 middle table.
+    // Otherwise, if 0x0AA-0x0CD has non-FF data, it's DSU user sound pointers.
+    var has_middle = false;
+    for (data[MIDDLE_OFF..PADDING_END]) |b| {
+        if (b != 0xFF) {
+            has_middle = true;
+            break;
+        }
+    }
+
+    if (has_middle) {
+        try dumpMiddleTable(w, data, ext_addrs);
+    } else {
+        try dumpDsuPointers(w, data);
+    }
+}
+
+fn dumpMiddleTable(w: *Io.Writer, data: []const u8, ext_addrs: []const ?u24) !void {
+    // DX4 middle track index: 0x094-0x0C9, 18 XOR-encoded entries = 9 pairs
+    try w.print("\n--- Middle track index (0x094–0x0C9, 18 entries, 9 pairs) ---\n", .{});
+
+    var mid_addrs: [MIDDLE_COUNT]?u24 = .{null} ** MIDDLE_COUNT;
+    var mid_used: usize = 0;
+    for (0..MIDDLE_COUNT) |i| {
+        const off = MIDDLE_OFF + i * 3;
+        const raw = data[off..][0..3];
+        if (isUnused(raw)) {
+            mid_addrs[i] = null;
+        } else {
+            mid_addrs[i] = xorDecode(raw, off);
+            mid_used += 1;
+        }
+    }
+    try w.print("Entries used: {d} / {d}\n\n", .{ mid_used, MIDDLE_COUNT });
+
+    if (mid_used > 0) {
+        // For the last pair's size, use the first extended address (not EOF)
+        var end_addr: usize = data.len;
+        for (ext_addrs) |opt| {
+            if (opt) |addr| {
+                if (@as(usize, addr) < end_addr) end_addr = @as(usize, addr);
+            }
+        }
+        try printPairTable(w, &mid_addrs, MIDDLE_OFF, end_addr);
+    }
+}
+
 fn dumpDsuPointers(w: *Io.Writer, data: []const u8) !void {
-    // Check if 0x0AA-0x0CD contains non-FF data (DSU user sound pointers)
-    const DSU_PTR_OFF: usize = 0x0AA;
-    const DSU_PTR_END: usize = 0x0CE;
     var has_dsu = false;
     for (data[DSU_PTR_OFF..DSU_PTR_END]) |b| {
         if (b != 0xFF) {
