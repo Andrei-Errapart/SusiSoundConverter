@@ -9,8 +9,7 @@ sound decoders connected via the SUSI (Serial User Standard Interface) bus.
 
 The formats are proprietary and undocumented. This specification was derived by
 hex analysis of sample files, cross-referencing the Uhlenbrock IntelliSound 4
-and Dietz micro-IS4 V2 manuals, and disassembly of the SUSI-SoundManager
-(SUSIsound.EXE).
+and Dietz micro-IS4 V2 manuals.
 
 ## Format family
 
@@ -25,10 +24,12 @@ appended.
 | .DS4      | 8-bit     | IS4, IS6 only  | Adds per-sound volume                |
 | .DSU      | 8-bit     | IS4 only       | DS3 + user custom sounds (200–203)   |
 | .DX4      | 8-bit     | X-clusive-S V4 | DS3 + middle track index (9 pairs)   |
-| .DS6      | 16-bit    | IS6 only       | Extended, 640s, 40+ sounds           |
+| .DS6      | 8-bit     | IS6 only       | Extended, 640s, 40+ sounds           |
 
-This document covers DS3, DSU, and DX4. DS6 has a different format tag
-(e.g. `25 05`) and a larger header layout; it is not described here.
+> **Note on DS6 "16-bit"**: The IS6 manual advertises "16 Bit Auflösung"
+> and "Noise-Shaping-Technology". In practice, DS6 files store 8-bit
+> unsigned PCM — the same as DS3/DX4. The 16-bit claim refers to the
+> source audio quality before conversion to the 8-bit storage format.
 
 ---
 
@@ -43,8 +44,12 @@ This document covers DS3, DSU, and DX4. DS6 has a different format tag
 | demoproj.DSU     | DSU    | 779,615     | 778,847       | ~59.8 s    |
 | 99-003.DX4       | DX4    | 1,717,937   | 1,717,169     | ~131.9 s   |
 | DL-USA.DX4       | DX4    | 1,685,027   | 1,684,259     | ~129.3 s   |
+| 99-Stainz.DS6    | DS6    | 3,053,350   | 3,051,775     | ~234.4 s   |
+| 99-UNI-1.DS6     | DS6    | 3,151,731   | 3,150,156     | ~241.9 s   |
+| DL-Mogul-Holz.DS6| DS6    | 2,961,857   | 2,960,282     | ~227.3 s   |
 
 Duration = audio bytes / 13,021 Hz.
+DS6 audio offset: 0x627. DS3/DX4 audio offset: 0x300.
 
 ---
 
@@ -81,11 +86,42 @@ table patched into the header:
 
 Total file size = DS3 base size + sum of all user sound slot sizes.
 
+### DS6
+
+DS6 files have a larger header (1,575 bytes vs 768) with additional track
+tables. The entire file — header and audio — is XOR-encoded (see
+[XOR scrambling](#xor-scrambling)).
+
+| Offset | Length | Description                                        |
+|--------|--------|----------------------------------------------------|
+| 0x000  | 2      | Magic number: `DD 33`                              |
+| 0x002  | 2      | Format tag: `25 05`                                |
+| 0x004  | 4      | Fixed metadata (decoded: `00 2B 06 00`)            |
+| 0x008  | 162    | Primary track index (54 × 3-byte LE24, XOR)        |
+| 0x0AA  | 36     | Padding (`FF`)                                     |
+| 0x0CE  | 50     | Configuration / CV data (XOR-encoded, same as DS3) |
+| 0x100  | 264    | Extended table 1 (44 pairs × 6 bytes, XOR)         |
+| 0x208  | 168    | Padding (`FF`)                                     |
+| 0x2B0  | 468    | Extended table 2 (78 pairs × 6 bytes, XOR)         |
+| 0x484  | 12     | Padding (`FF`)                                     |
+| 0x490  | 48     | Extended table 3 (8 pairs × 6 bytes, XOR)          |
+| 0x4C0  | 102    | Padding (`FF`)                                     |
+| 0x526  | 16     | Embedded sound name (ASCII, space-padded, XOR)     |
+| 0x536  | 241    | Metadata / configuration                           |
+| 0x627  | to EOF | Audio data (8-bit unsigned PCM, XOR-encoded)       |
+
+Total header size: **1,575 bytes** (0x627).
+
+Each pair in the extended tables consists of two consecutive 3-byte entries
+(A and B). In most cases A == B. When A ≠ B, A is the start address and
+B is the loop-back address (same semantics as DX4 middle table pairs).
+
+Unused pair slots in extended table 2 use sentinel addresses that increment
+by 1 from a boundary value, resulting in zero-length (1-byte) entries.
+
 ### Notes
 
 - All header regions are fixed-size; unused entries are filled with `FF`.
-- DS6 files share the magic (`DD 33`) but have a different format tag
-  (e.g. `25 05`) and a larger/different header layout.
 
 ---
 
@@ -93,6 +129,13 @@ Total file size = DS3 base size + sum of all user sound slot sizes.
 
 All track index entries and the configuration region use the same XOR
 scheme: each byte at file offset N is stored as `value XOR (N & 0xFF)`.
+
+In DS3/DX4/DSU, only the track indices and configuration region are XOR-
+encoded; the magic, format tag, padding, and audio data are stored raw.
+In DS6, the **entire file** (header + audio) is XOR-encoded. The magic
+(`DD 33`) and format tag (`25 05`) still appear raw in the file because
+the XOR key at offset 0 is `0x00` (and the format tag values were chosen
+to encode correctly at offsets 2–3).
 
 To decode a 3-byte entry at file offset `base`:
 
@@ -129,10 +172,10 @@ Dietz/Uhlenbrock sound file.
 ```
 Offset  Bytes
 0x002   FF FF     — DS3 / DSU / DX4
+0x002   25 05     — DS6
 ```
 
-DS6 files use different values here (e.g. `25 05`), allowing format
-identification.
+The format tag distinguishes DS6 from DS3/DX4/DSU.
 
 ---
 
@@ -398,7 +441,22 @@ include byte 5 = `04` and byte 17 = `04` across all observed files.
 
 ---
 
-## Audio data (offset 0x300 to EOF)
+## Embedded sound name — DS6 only (offset 0x526)
+
+**16 bytes of ASCII text, XOR-encoded, space-padded.**
+
+After decoding, this field contains the sound project name (e.g.
+`99-Franzburg`, `99-UNI-1`, `DL-Mogul-Holz`). The name does not
+necessarily match the file name.
+
+> Note: `99-Stainz.DS6` contains the embedded name `99-Franzburg`,
+> suggesting the file was derived from a different sound project.
+
+DS3/DX4/DSU files do not have an embedded sound name.
+
+---
+
+## Audio data (offset 0x300 / 0x627 to EOF)
 
 ### Encoding
 
@@ -416,8 +474,7 @@ include byte 5 = `04` and byte 17 = `04` across all observed files.
 The sample rate is **13,021 Hz**, confirmed by two independent sources:
 
 - The Dietz micro-IS4 V2 documentation specifies 13,021 Hz.
-- The SUSI-SoundManager (SUSIsound.EXE) expects input WAV files at
-  13,021 Hz.
+- The SUSI-SoundManager expects input WAV files at 13,021 Hz.
 
 The sample rate is not stored in the file itself; it is a fixed
 property of the IntelliSound playback hardware.
@@ -426,12 +483,13 @@ property of the IntelliSound playback hardware.
 
 All formats are flat images destined for the sound module's flash chip:
 
-| Flash chip   | Capacity     | Capacity (bytes) |
-|--------------|--------------|------------------|
-| 32 Mbit      | 4 MB         | 4,194,304        |
+| Flash chip   | Capacity     | Capacity (bytes) | Formats          |
+|--------------|--------------|------------------|------------------|
+| 32 Mbit      | 4 MB         | 4,194,304        | DS3, DX4, DSU    |
+| 64 Mbit      | 8 MB         | 8,388,608        | DS6              |
 
-At 13,021 Hz, maximum recording duration is 4,193,536 / 13,021 =
-**322 seconds**.
+At 13,021 Hz, maximum recording duration is ~322 s (32 Mbit) or
+~640 s (64 Mbit).
 
 ### Audio data characteristics
 
@@ -442,7 +500,10 @@ At 13,021 Hz, maximum recording duration is 4,193,536 / 13,021 =
 - There are no long runs of silence (0x80) between tracks; track
   boundaries must be determined from the header index, not from the
   audio stream.
-- The total audio duration is `(file_size - 0x300) / 13021`.
+- The total audio duration is `(file_size - header_size) / 13021`,
+  where header_size is 0x300 for DS3/DX4/DSU or 0x627 for DS6.
+- DS6 audio data is XOR-encoded (see [XOR scrambling](#xor-scrambling));
+  DS3/DX4 audio data is stored raw.
 
 ---
 
@@ -529,13 +590,14 @@ indicate empty slots. All filenames are relative to the DSP file location.
 ## Source evidence
 
 This specification was determined by:
-- Hex analysis of DS3, DSU, and DX4 sample files
+- Hex analysis of DS3, DSU, DX4, and DS6 sample files
 - Cross-referencing the Uhlenbrock IntelliSound 4 and Dietz micro-IS4 V2 manuals
-- Disassembly of the `writeFLASH` function in SUSIsound.EXE (VB6 native
-  compiled, ~5,400 lines of x86)
 - Byte-level comparison of DS3 input (`DL-UNI1.DS3`, 651,982 bytes)
   with DSU output (`demoproj.DSU`, 779,615 bytes)
 - Comparison of DS3 and DX4 header structures
+- Hex analysis of three DS6 files (`99-Stainz.DS6`, `99-UNI-1.DS6`,
+  `DL-Mogul-Holz.DS6`) confirming 8-bit audio, XOR-encoded body, and
+  extended header layout
 
 ---
 
@@ -555,9 +617,15 @@ This specification was determined by:
    likely encode playback parameters (speed ramp, volume curves) or CV
    defaults. The exact byte-to-parameter mapping is unknown.
 
-4. **DS6 differences**: The DS6 header is larger (data up to ~0x500) and
-   uses 16-bit audio. A separate specification is needed.
+4. **DS6 extended table semantics**: Extended tables 1–3 contain 44 + 78 +
+   8 = 130 pairs. Which sound numbers map to which pairs? How do the
+   sentinel entries (incrementing-by-1 addresses) in table 2 interact
+   with the real entries?
 
-5. **DX4 middle table sound mapping**: Which sound numbers correspond to
+5. **DS6 metadata region (0x536–0x626)**: 241 bytes of unknown purpose
+   between the sound name and audio data. Likely contains additional
+   configuration or playback parameters.
+
+6. **DX4 middle table sound mapping**: Which sound numbers correspond to
    the 9 pairs in the middle track index? The X-clusive-S V4 module
    supports more sounds than the standard IntelliSound.

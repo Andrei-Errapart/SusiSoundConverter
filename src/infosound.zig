@@ -17,7 +17,21 @@ const EXTENDED_COUNT: usize = 40;
 const CONFIG_OFF: usize = 0x0CE;
 const CONFIG_LEN: usize = 50;
 const FLASH_32MBIT: usize = 4 * 1024 * 1024;
+const FLASH_64MBIT: usize = 8 * 1024 * 1024;
 const SAMPLE_RATE: f64 = 13021.0;
+
+// DS6-specific constants
+const DS6_HEADER_SIZE: usize = 0x627;
+const DS6_PRIMARY_OFF: usize = 0x008;
+const DS6_PRIMARY_COUNT: usize = 54;
+const DS6_EXT1_OFF: usize = 0x100;
+const DS6_EXT1_COUNT: usize = 88; // 44 pairs
+const DS6_EXT2_OFF: usize = 0x2B0;
+const DS6_EXT2_COUNT: usize = 156; // 78 pairs
+const DS6_EXT3_OFF: usize = 0x490;
+const DS6_EXT3_COUNT: usize = 16; // 8 pairs
+const DS6_NAME_OFF: usize = 0x526;
+const DS6_NAME_LEN: usize = 16;
 
 fn xorDecode(data: []const u8, file_offset: usize) u24 {
     const b0: u24 = data[0] ^ @as(u8, @truncate(file_offset));
@@ -70,14 +84,14 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8) !void {
     try w.print("File size: {d} bytes\n", .{data.len});
 
     if (data.len < HEADER_SIZE) {
-        try w.print("Error: file too small for DS3 header (need {d} bytes)\n\n", .{HEADER_SIZE});
+        try w.print("Error: file too small for header (need {d} bytes)\n\n", .{HEADER_SIZE});
         return;
     }
 
     // Magic
     try w.print("Magic: {X:0>2} {X:0>2}", .{ data[0], data[1] });
     if (data[0] == 0xDD and data[1] == 0x33) {
-        try w.print(" (valid DS3/DSD)\n", .{});
+        try w.print(" (valid IntelliSound)\n", .{});
     } else if (data[0] == 0x00 and data[1] == 0xFF) {
         try w.print(" (encrypted — not supported)\n\n", .{});
         return;
@@ -86,9 +100,12 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8) !void {
         return;
     }
 
-    // Format tag
+    // Format tag — detect DS6 vs DS3/DX4/DSU
     try w.print("Format tag: {X:0>2} {X:0>2}", .{ data[2], data[3] });
-    if (data[2] == 0xFF and data[3] == 0xFF) {
+    if (data[2] == 0x25 and data[3] == 0x05) {
+        try w.print(" (DS6)\n", .{});
+        return dumpDS6File(w, data);
+    } else if (data[2] == 0xFF and data[3] == 0xFF) {
         try w.print(" (DS3)\n", .{});
     } else {
         try w.print("\n", .{});
@@ -152,6 +169,96 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8) !void {
         try w.print(" {X:0>2}", .{decoded});
     }
     try w.print("\n\n", .{});
+}
+
+fn dumpDS6File(w: *Io.Writer, data: []const u8) !void {
+    if (data.len < DS6_HEADER_SIZE) {
+        try w.print("Error: file too small for DS6 header (need {d} bytes)\n\n", .{DS6_HEADER_SIZE});
+        return;
+    }
+
+    const audio_len = data.len - DS6_HEADER_SIZE;
+    const duration_s = @as(f64, @floatFromInt(audio_len)) / SAMPLE_RATE;
+    try w.print("Audio region: 0x{X:0>6}–0x{X:0>6} ({d} bytes, {d:.1}s at 13021 Hz)\n", .{
+        @as(usize, DS6_HEADER_SIZE), data.len, audio_len, duration_s,
+    });
+    try w.print("Flash usage: {d} / {d} bytes ({d} free)\n", .{
+        data.len, FLASH_64MBIT, FLASH_64MBIT - @min(data.len, FLASH_64MBIT),
+    });
+
+    // Embedded sound name (XOR-decoded ASCII at 0x526)
+    var name_buf: [DS6_NAME_LEN]u8 = undefined;
+    for (0..DS6_NAME_LEN) |i| {
+        const off = DS6_NAME_OFF + i;
+        name_buf[i] = data[off] ^ @as(u8, @truncate(off));
+    }
+    const name = std.mem.trimEnd(u8, &name_buf, " ");
+    try w.print("Sound name: \"{s}\"\n", .{name});
+
+    // Primary track index (54 entries at 0x008)
+    try w.print("\n--- Primary track index (0x008–0x0A9, {d} entries) ---\n", .{DS6_PRIMARY_COUNT});
+    var primary_addrs: [DS6_PRIMARY_COUNT]?u24 = .{null} ** DS6_PRIMARY_COUNT;
+    var primary_used: usize = 0;
+    for (0..DS6_PRIMARY_COUNT) |i| {
+        const off = DS6_PRIMARY_OFF + i * 3;
+        const raw = data[off..][0..3];
+        if (isUnused(raw)) {
+            primary_addrs[i] = null;
+        } else {
+            primary_addrs[i] = xorDecode(raw, off);
+            primary_used += 1;
+        }
+    }
+    try w.print("Entries used: {d} / {d}\n\n", .{ primary_used, DS6_PRIMARY_COUNT });
+    try printTrackTable(w, &primary_addrs, DS6_PRIMARY_OFF, data.len);
+
+    // Extended table 1 (44 pairs at 0x100)
+    try w.print("\n--- Extended table 1 (0x100–0x207, {d} entries, {d} pairs) ---\n", .{
+        DS6_EXT1_COUNT, DS6_EXT1_COUNT / 2,
+    });
+    try dumpPairRegion(w, data, DS6_EXT1_OFF, DS6_EXT1_COUNT, data.len);
+
+    // Extended table 2 (78 pairs at 0x2B0)
+    try w.print("\n--- Extended table 2 (0x2B0–0x483, {d} entries, {d} pairs) ---\n", .{
+        DS6_EXT2_COUNT, DS6_EXT2_COUNT / 2,
+    });
+    try dumpPairRegion(w, data, DS6_EXT2_OFF, DS6_EXT2_COUNT, data.len);
+
+    // Extended table 3 (8 pairs at 0x490)
+    try w.print("\n--- Extended table 3 (0x490–0x4BF, {d} entries, {d} pairs) ---\n", .{
+        DS6_EXT3_COUNT, DS6_EXT3_COUNT / 2,
+    });
+    try dumpPairRegion(w, data, DS6_EXT3_OFF, DS6_EXT3_COUNT, data.len);
+
+    // Configuration region (same offset as DS3)
+    try w.print("\n--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---\n", .{});
+    for (0..CONFIG_LEN) |i| {
+        const off = CONFIG_OFF + i;
+        const decoded = data[off] ^ @as(u8, @truncate(off));
+        if (i > 0 and i % 16 == 0) try w.print("\n", .{});
+        if (i % 16 == 0) try w.print("  0x{X:0>3}:", .{off});
+        try w.print(" {X:0>2}", .{decoded});
+    }
+    try w.print("\n\n", .{});
+}
+
+fn dumpPairRegion(w: *Io.Writer, data: []const u8, base_off: usize, count: usize, file_size: usize) !void {
+    var addrs: [DS6_EXT2_COUNT]?u24 = .{null} ** DS6_EXT2_COUNT; // largest possible
+    var used: usize = 0;
+    for (0..count) |i| {
+        const off = base_off + i * 3;
+        const raw = data[off..][0..3];
+        if (isUnused(raw)) {
+            addrs[i] = null;
+        } else {
+            addrs[i] = xorDecode(raw, off);
+            used += 1;
+        }
+    }
+    try w.print("Entries used: {d} / {d}\n\n", .{ used, count });
+    if (used > 0) {
+        try printPairTable(w, addrs[0..count], base_off, file_size);
+    }
 }
 
 fn printTrackTable(w: *Io.Writer, addrs: []const ?u24, base_off: usize, file_size: usize) !void {
