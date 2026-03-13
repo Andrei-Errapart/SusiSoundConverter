@@ -1,25 +1,26 @@
 # DS3 File Format Specification
 
-Status: **draft / partially reverse-engineered**
+Status: **draft / partial**
 
 This document describes the binary format of `.DS3` sound files used by
 Dietz / Uhlenbrock IntelliSound modules (micro-IS3, micro-IS4, and compatible).
-DS3 files contain 8-bit audio and metadata for model railway sound decoders
-connected via the SUSI (Serial User Standard Interface) bus.
+DS3 files contain 8-bit mono audio at 13,021 Hz and metadata for model railway
+sound decoders connected via the SUSI (Serial User Standard Interface) bus.
 
 The format is proprietary and undocumented. This specification was derived by
-hex analysis of sample files and cross-referencing the Uhlenbrock IntelliSound 4
+hex analysis of sample files, cross-referencing the Uhlenbrock IntelliSound 4
 and Dietz micro-IS4 V2 manuals.
 
 ## Reference files
 
-| File             | Size (bytes) | Audio (bytes) | Duration\* |
-|------------------|-------------|---------------|-----------|
-| 99-Spreewald.DS3 | 601,894     | 601,126       | ~75 s     |
-| DL-USA-Holz.DS3  | 563,228     | 562,460       | ~70 s     |
-| SB-ALT.DS3       | 435,300     | 434,532       | ~54 s     |
+| File             | Size (bytes) | Audio (bytes) | Duration   |
+|------------------|-------------|---------------|------------|
+| 99-Spreewald.DS3 | 601,894     | 601,126       | ~46.2 s    |
+| DL-USA-Holz.DS3  | 563,228     | 562,460       | ~43.2 s    |
+| SB-ALT.DS3       | 435,300     | 434,532       | ~33.4 s    |
+| DL-UNI1.DS3      | 651,982     | 651,214       | ~50.0 s    |
 
-\* Estimated at 8,000 Hz sample rate.
+Duration = audio bytes / 13,021 Hz.
 
 ---
 
@@ -30,7 +31,8 @@ and Dietz micro-IS4 V2 manuals.
 | 0x000     | 2        | Magic number: `DD 33`                          |
 | 0x002     | 2        | Format tag: `FF FF` for DS3                    |
 | 0x004     | 144      | Track index table (48 × 3-byte entries)        |
-| 0x094     | 58       | Padding (`FF`)                                 |
+| 0x094     | 22       | Padding (`FF`)                                 |
+| 0x0AA     | 36       | Reserved; used for DSU user sound pointers (see DSU_FILE_FORMAT.md) |
 | 0x0CE     | 50       | Configuration / CV data (encoded)              |
 | 0x100     | 120      | Extended track index (40 × 3-byte entries)     |
 | 0x178     | 392      | Padding (`FF`)                                 |
@@ -81,57 +83,69 @@ up to 48 sound numbers in the primary table:
 
 ### Entry format (3 bytes each)
 
-The exact encoding of each 3-byte entry is **unknown**.
-Observations:
+Each entry is a **24-bit little-endian absolute file offset** pointing
+to the start of the sound's audio data. The entry is XOR-scrambled:
+each byte at file offset N is stored as `value XOR (N & 0xFF)`.
 
-- The **third byte** of each entry is approximately equal to its own file
-  offset (low byte). This indicates a permutation or address-scrambling
-  scheme rather than plain data.
-- Entries for absent sounds are filled with `FF FF FF`.
-- Two different DS3 files with different audio content share identical
-  patterns in certain entry positions, suggesting that some bytes encode
-  fixed structural information (possibly sound numbers or slot IDs) while
-  others encode per-file data (possibly audio offsets/lengths).
+To decode an entry at file offset `base`:
 
-> **TODO**: Determine whether entries encode 24-bit audio start addresses,
-> lengths, or a combination. The scrambling scheme needs to be identified
-> — possibly a byte-level permutation applied during SUSI programming.
+```
+decoded[0] = raw[base+0] XOR ((base+0) & 0xFF)
+decoded[1] = raw[base+1] XOR ((base+1) & 0xFF)
+decoded[2] = raw[base+2] XOR ((base+2) & 0xFF)
+address    = decoded[0] + decoded[1]*256 + decoded[2]*65536
+```
+
+For example, in `DL-UNI1.DS3`, entry 0 at offset 0x004 contains raw
+bytes `04 06 06`. Decoding: `04^04=00`, `06^05=03`, `06^06=00` →
+address 0x000300 = 768, which is exactly the start of the audio region.
+
+- Entries for absent sounds are filled with raw `FF FF FF` (not XOR'd).
+- The length of each sound is determined by the difference between
+  consecutive decoded addresses.
+- Consecutive entries with the same decoded address indicate an empty
+  sound slot (zero-length audio).
 
 ### Extended track index (offset 0x100)
 
 **120 bytes = 40 entries × 3 bytes each.**
 
-Provides additional sound slots beyond the primary 48, for a total of up
-to 88 sound slots. Used by files with many sounds (e.g. 99-Spreewald,
-DL-USA-Holz); all `FF` in simpler files (e.g. SB-ALT).
+Uses the same XOR encoding as the primary table. The entries come in
+**pairs**: each pair of entries decodes to the same address. The 40
+entries represent 20 sounds. The purpose of the pairing is not fully
+understood — it may encode separate start and loop-back addresses
+(which happen to be identical in the observed files).
 
-These extended slots likely cover:
-- Custom sounds 200–203 (DSU user sounds, IS4 only)
-- Module-specific additional sounds (22–39 in some modules)
+Used by files with many sounds (e.g. 99-Spreewald, DL-USA-Holz);
+all `FF` in simpler files (e.g. SB-ALT).
 
 ---
 
 ## Configuration region (offset 0x0CE)
 
-**50 bytes of encoded configuration data.**
+**50 bytes of configuration data, using the same XOR encoding as the
+track index** (each byte at offset N stored as `value XOR (N & 0xFF)`).
 
 This region is identical between 99-Spreewald and DL-USA-Holz but
 differs in SB-ALT, indicating it is per-file (not universal).
 
-### Observations
+### Decoded values (DL-UNI1.DS3)
 
-- The values do **not** correspond directly to CV default values from the
-  Dietz or Uhlenbrock manuals.
-- In simpler files (SB-ALT), bytes at offsets 0xE0–0xF7 contain identity-
-  mapped values (`E0, E1, E2, ..., F7`), while more complex files have
-  scrambled values at the same positions.
-- Bytes 0xF6–0xF7 are `F6 F7` in all observed files.
-- The last two bytes (0xFE–0xFF) are always non-`FF` but vary between
-  files.
+```
+0x0CE: 87 3C 01 FF FF 04 FF FF 2D 00 00 FF FF FF FF FF
+0x0DE: FF 04 29 2F 6B 73 D8 E0 18 20 50 56 96 9D 03 09
+0x0EE: 3E 45 AC B4 A5 A7 D4 D6 00 00 13 15 00 00 00 00
+0x0FE: 03 21
+```
+
+The decoded values often come in pairs (e.g. 29/2F, 6B/73, D8/E0),
+suggesting they may encode start/end parameters for sound playback
+(speed ramp boundaries, volume curves, etc.). Several `FF` values
+indicate unused or default parameters.
 
 > **TODO**: Determine the relationship between this region and the CV table
-> (CVs 897–939). The data may be encoded with the same scrambling scheme
-> as the track index.
+> (CVs 897–939). The decoded values do not directly match published CV
+> defaults.
 
 ---
 
@@ -144,35 +158,35 @@ differs in SB-ALT, indicating it is per-file (not universal).
 | Format      | PCM, unsigned                  |
 | Bit depth   | 8 bits per sample              |
 | Channels    | 1 (mono)                       |
-| Sample rate  | **~8,000 Hz** (estimated)      |
+| Sample rate | **13,021 Hz**                  |
 | Byte order  | N/A (8-bit)                    |
 | Silence     | 0x80 (128)                     |
 
-### Sample rate estimation
+### Sample rate
 
-The sample rate is not stored in the file (or is encoded in the
-scrambled header). Spectral analysis of the audio data shows:
+The sample rate is **13,021 Hz**, confirmed by two independent sources:
 
-- At 8,000 Hz playback, audio energy fills ~80% of the available
-  bandwidth (up to ~3.2 kHz), consistent with anti-aliased 8 kHz audio.
-- At 16,000 Hz playback, audio energy only fills ~40% of bandwidth,
-  suggesting this rate is too high.
-- 8 kHz is the standard rate for telephone-quality audio and is typical
-  for embedded sound modules of this era.
-- At 8 kHz, a 320-second maximum yields 2,560,000 bytes (~2.44 MB),
-  fitting a 32 Mbit (4 MB) flash chip with room for the header.
+- The Dietz micro-IS4 V2 documentation specifies 13,021 Hz.
+- The SUSI-SoundManager (SUSIsound.EXE) expects input WAV files at
+  13,021 Hz.
 
-> **TODO**: Confirm sample rate by listening test or by reverse-engineering
-> the SUSIkomm programmer software.
+The sample rate is not stored in the DS3 file itself; it is a fixed
+property of the IntelliSound playback hardware.
+
+At 13,021 Hz with a 32 Mbit (4 MB) flash chip, maximum recording
+duration is approximately 4,193,536 / 13,021 = **322 seconds**.
 
 ### Audio data characteristics
 
-- The audio is **not scrambled** — byte values have a uniform distribution
-  centered on 0x80, consistent with raw unsigned 8-bit PCM.
+- The audio is raw unsigned 8-bit PCM — can be seen directly in the output of SUSI-SoundManager.
+- Byte values `0x00` and `0xFF` are avoided in user sound regions (DSU)
+  by clamping to `0x01` and `0xFE` respectively, since these values serve
+  as markers in the format (see DSU_FILE_FORMAT.md). The base DS3 audio
+  data does not appear to have this restriction.
 - There are no long runs of silence (0x80) between tracks; track
   boundaries must be determined from the header index, not from the audio
   stream.
-- The total audio duration is `(file_size - 0x300) / sample_rate`.
+- The total audio duration is `(file_size - 0x300) / 13021`.
 
 ---
 
@@ -223,7 +237,7 @@ From the Dietz micro-IS4 V2 and Uhlenbrock IntelliSound 4 manuals:
 | .DSD      | 8-bit     | IS3, IS4, IS6     | Oldest format           |
 | .DS3      | 8-bit     | IS3, IS4, IS6     | This document           |
 | .DS4      | 8-bit     | IS4, IS6 only     | Adds per-sound volume   |
-| .DSU      | 8-bit     | IS4 only          | User custom sounds      |
+| .DSU      | 8-bit     | IS4 only          | User custom sounds (see DSU_FILE_FORMAT.md) |
 | .DS6      | 16-bit    | IS6 only          | Extended, 640s, 40+ sounds |
 | .DX4      | unknown   | X-clusive-S V4    | Target of conversion    |
 
@@ -235,20 +249,19 @@ capacity, and audio bit depth.
 
 ## Open questions
 
-1. **Scrambling scheme**: The header data (track index and configuration)
-   appears scrambled. Is this a fixed permutation, an XOR cipher, or
-   something related to the SUSI programming protocol (commands 0xA0–0xAF)?
+1. **Sound number to entry mapping**: Which sound numbers (0–39, 92–99)
+   correspond to which entry indices in the primary table (0–47)? Is the
+   mapping simply `entry_index = sound_number` for 0–39, with 92–99
+   mapped to entries 40–47? Comparing multiple DS3 files with known
+   sound assignments would resolve this.
 
-2. **Exact sample rate**: Estimated at 8 kHz from spectral analysis. Could
-   also be 11,025 Hz. Needs confirmation.
+2. **Extended table pair semantics**: Each pair of entries in the extended
+   table decodes to the same address. Are these start/loop-back pairs,
+   or do they serve another purpose?
 
-3. **Track boundary encoding**: How does each 3-byte entry in the track
-   index encode the start offset and length of its corresponding sound
-   in the audio data?
+3. **Configuration region semantics**: The 50 decoded bytes at 0xCE–0xFF
+   likely encode playback parameters (speed ramp, volume curves) or CV
+   defaults. The exact byte-to-parameter mapping is unknown.
 
-4. **Configuration region semantics**: What do the 50 bytes at 0xCE–0xFF
-   represent? Possible candidates: CV defaults, playback parameters,
-   checksum, or module identification.
-
-5. **DS6 differences**: The DS6 header is larger (data up to ~0x500) and
+4. **DS6 differences**: The DS6 header is larger (data up to ~0x500) and
    uses 16-bit audio. A separate specification is needed.
