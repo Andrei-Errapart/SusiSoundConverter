@@ -64,6 +64,25 @@ fn fmtDuration(samples: usize) [12]u8 {
     return buf;
 }
 
+/// Detect whether audio data is XOR-encoded by comparing smoothness.
+/// Returns true if the XOR-decoded version is smoother (lower first-derivative energy).
+fn isXorEncoded(data: []const u8, start: usize, size: usize) bool {
+    if (size < 4 or start + size > data.len) return false;
+    var raw_energy: u64 = 0;
+    var dec_energy: u64 = 0;
+    var prev_raw: i16 = data[start];
+    var prev_dec: i16 = data[start] ^ @as(u8, @truncate(start));
+    for (1..size) |i| {
+        const raw: i16 = data[start + i];
+        const dec: i16 = data[start + i] ^ @as(u8, @truncate(start + i));
+        raw_energy += @abs(raw - prev_raw);
+        dec_energy += @abs(dec - prev_dec);
+        prev_raw = raw;
+        prev_dec = dec;
+    }
+    return dec_energy < raw_energy;
+}
+
 /// Compute CRC32 of XOR-decoded audio data.
 fn audioCrc32(data: []const u8, start: usize, size: usize, arena: Allocator) u32 {
     if (size == 0 or start + size > data.len) return 0;
@@ -223,8 +242,9 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8, export_wa
         data.len, FLASH_32MBIT, FLASH_32MBIT - @min(data.len, FLASH_32MBIT),
     });
 
+    // --- Parse all address tables first ---
+
     // Primary track index
-    try w.print("\n--- Primary track index (0x004–0x093, 48 entries) ---\n", .{});
     var primary_addrs: [PRIMARY_COUNT]?u24 = .{null} ** PRIMARY_COUNT;
     var primary_used: usize = 0;
     for (0..PRIMARY_COUNT) |i| {
@@ -237,11 +257,8 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8, export_wa
             primary_used += 1;
         }
     }
-    try w.print("Entries used: {d} / {d}\n\n", .{ primary_used, PRIMARY_COUNT });
-    try printTrackTable(w, &primary_addrs, data.len, data, arena, exp, "p");
 
     // Extended track index
-    try w.print("\n--- Extended track index (0x100–0x177, 40 entries, 20 pairs) ---\n", .{});
     var ext_addrs: [EXTENDED_COUNT]?u24 = .{null} ** EXTENDED_COUNT;
     var ext_used: usize = 0;
     for (0..EXTENDED_COUNT) |i| {
@@ -254,13 +271,72 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8, export_wa
             ext_used += 1;
         }
     }
+
+    // Middle table (DX4) — parse addresses only
+    var has_middle = false;
+    for (data[MIDDLE_OFF..PADDING_END]) |b| {
+        if (b != 0xFF) { has_middle = true; break; }
+    }
+    var mid_addrs: [MIDDLE_COUNT]?u24 = .{null} ** MIDDLE_COUNT;
+    if (has_middle) {
+        for (0..MIDDLE_COUNT) |i| {
+            const off = MIDDLE_OFF + i * 3;
+            const raw = data[off..][0..3];
+            if (!isUnused(raw)) {
+                mid_addrs[i] = xorDecode(raw, off);
+            }
+        }
+    }
+
+    // DSU pointers — parse addresses only
+    var has_dsu = false;
+    if (!has_middle) {
+        for (data[DSU_PTR_OFF..DSU_PTR_END]) |b| {
+            if (b != 0xFF) { has_dsu = true; break; }
+        }
+    }
+
+    // Compute proper bounds: primary extends to the first middle/extended/DSU address
+    var primary_bound: usize = data.len;
+    if (has_middle) {
+        for (&mid_addrs) |opt| {
+            if (opt) |addr| {
+                if (@as(usize, addr) < primary_bound) primary_bound = @as(usize, addr);
+            }
+        }
+    }
+    for (&ext_addrs) |opt| {
+        if (opt) |addr| {
+            if (@as(usize, addr) < primary_bound) primary_bound = @as(usize, addr);
+        }
+    }
+    if (has_dsu) {
+        for (0..12) |slot| {
+            const off = DSU_PTR_OFF + slot * 3;
+            const raw = data[off..][0..3];
+            const addr = @as(usize, raw[0]) | (@as(usize, raw[1]) << 8) | (@as(usize, raw[2]) << 16);
+            if (addr < primary_bound) primary_bound = addr;
+        }
+    }
+
+    // --- Print all tables ---
+
+    try w.print("\n--- Primary track index (0x004–0x093, 48 entries) ---\n", .{});
+    try w.print("Entries used: {d} / {d}\n\n", .{ primary_used, PRIMARY_COUNT });
+    try printTrackTable(w, &primary_addrs, primary_bound, data, arena, exp, "p");
+
+    try w.print("\n--- Extended track index (0x100–0x177, 40 entries, 20 pairs) ---\n", .{});
     try w.print("Entries used: {d} / {d}\n\n", .{ ext_used, EXTENDED_COUNT });
     if (ext_used > 0) {
         try printPairTable(w, &ext_addrs, data.len, data, arena, exp, "x");
     }
 
-    // Middle table (DX4) or DSU user sound pointers — detect which
-    try dumpMiddleRegion(w, data, &ext_addrs, arena, exp);
+    // Print middle table or DSU pointers
+    if (has_middle) {
+        try dumpMiddleTableParsed(w, data, &mid_addrs, &ext_addrs, arena, exp);
+    } else if (has_dsu) {
+        try dumpDsuPointers(w, data, arena, exp);
+    }
 
     // Configuration region
     try w.print("\n--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---\n", .{});
@@ -365,8 +441,8 @@ fn dumpPairRegion(w: *Io.Writer, data: []const u8, base_off: usize, count: usize
 }
 
 fn printTrackTable(w: *Io.Writer, addrs: []const ?u24, file_size: usize, data: []const u8, arena: Allocator, exp: ?*const ExportCtx, prefix: []const u8) !void {
-    try w.print("  {s:>5}  {s:>8}  {s:>8}  {s:>8}  {s:>8}\n", .{ "Entry", "Offset", "Size", "Duration", "CRC32" });
-    try w.print("  {s:->5}  {s:->8}  {s:->8}  {s:->8}  {s:->8}\n", .{ "", "", "", "", "" });
+    try w.print("  {s:>5}  {s:>8}  {s:>8}  {s:>8}  {s:>8}  {s:>3}\n", .{ "Entry", "Offset", "Size", "Duration", "CRC32", "Enc" });
+    try w.print("  {s:->5}  {s:->8}  {s:->8}  {s:->8}  {s:->8}  {s:->3}\n", .{ "", "", "", "", "", "" });
 
     for (addrs, 0..) |addr_opt, i| {
         const addr = addr_opt orelse continue;
@@ -384,11 +460,13 @@ fn printTrackTable(w: *Io.Writer, addrs: []const ?u24, file_size: usize, data: [
         };
 
         if (size == 0) {
-            try w.print("  {d:>5}  0x{X:0>6}  {s:>8}  {s:>8}  {s:>8}\n", .{ i, addr, "-", "-", "-" });
+            try w.print("  {d:>5}  0x{X:0>6}  {s:>8}  {s:>8}  {s:>8}  {s:>3}\n", .{ i, addr, "-", "-", "-", "-" });
         } else {
             const dur = fmtDuration(size);
+            const xor = isXorEncoded(data, @as(usize, addr), size);
             const crc = audioCrc32(data, @as(usize, addr), size, arena);
-            try w.print("  {d:>5}  0x{X:0>6}  {d:>8}  {s}  {X:0>8}\n", .{ i, addr, size, dur, crc });
+            const enc: []const u8 = if (xor) "XOR" else "raw";
+            try w.print("  {d:>5}  0x{X:0>6}  {d:>8}  {s}  {X:0>8}  {s:>3}\n", .{ i, addr, size, dur, crc, enc });
         }
 
         // Export WAV
@@ -404,8 +482,8 @@ fn printTrackTable(w: *Io.Writer, addrs: []const ?u24, file_size: usize, data: [
 }
 
 fn printPairTable(w: *Io.Writer, addrs: []const ?u24, file_size: usize, data: []const u8, arena: Allocator, exp: ?*const ExportCtx, prefix: []const u8) !void {
-    try w.print("  {s:>4}  {s:>8}  {s:>8}  {s:>8}  {s:>8}  {s:>8}\n", .{ "Pair", "Addr A", "Addr B", "Size", "Duration", "CRC32" });
-    try w.print("  {s:->4}  {s:->8}  {s:->8}  {s:->8}  {s:->8}  {s:->8}\n", .{ "", "", "", "", "", "" });
+    try w.print("  {s:>4}  {s:>8}  {s:>8}  {s:>8}  {s:>8}  {s:>8}  {s:>3}\n", .{ "Pair", "Addr A", "Addr B", "Size", "Duration", "CRC32", "Enc" });
+    try w.print("  {s:->4}  {s:->8}  {s:->8}  {s:->8}  {s:->8}  {s:->8}  {s:->3}\n", .{ "", "", "", "", "", "", "" });
 
     var pair: usize = 0;
     while (pair * 2 + 1 < addrs.len) : (pair += 1) {
@@ -429,14 +507,16 @@ fn printPairTable(w: *Io.Writer, addrs: []const ?u24, file_size: usize, data: []
         };
 
         if (size == 0) {
-            try w.print("  {d:>4}  0x{X:0>6}  0x{X:0>6}  {s:>8}  {s:>8}  {s:>8}\n", .{
-                pair, a, b, "-", "-", "-",
+            try w.print("  {d:>4}  0x{X:0>6}  0x{X:0>6}  {s:>8}  {s:>8}  {s:>8}  {s:>3}\n", .{
+                pair, a, b, "-", "-", "-", "-",
             });
         } else {
             const dur = fmtDuration(size);
+            const xor = isXorEncoded(data, @as(usize, a), size);
             const crc = audioCrc32(data, @as(usize, a), size, arena);
-            try w.print("  {d:>4}  0x{X:0>6}  0x{X:0>6}  {d:>8}  {s}  {X:0>8}\n", .{
-                pair, a, b, size, dur, crc,
+            const enc: []const u8 = if (xor) "XOR" else "raw";
+            try w.print("  {d:>4}  0x{X:0>6}  0x{X:0>6}  {d:>8}  {s}  {X:0>8}  {s:>3}\n", .{
+                pair, a, b, size, dur, crc, enc,
             });
         }
 
@@ -496,7 +576,27 @@ fn dumpMiddleTable(w: *Io.Writer, data: []const u8, ext_addrs: []const ?u24, are
     }
 }
 
-fn dumpDsuPointers(w: *Io.Writer, data: []const u8, _: Allocator, exp: ?*const ExportCtx) !void {
+/// Print middle table with pre-parsed addresses (avoids re-parsing).
+fn dumpMiddleTableParsed(w: *Io.Writer, data: []const u8, mid_addrs: []const ?u24, ext_addrs: []const ?u24, arena: Allocator, exp: ?*const ExportCtx) !void {
+    try w.print("\n--- Middle track index (0x094–0x0C9, 18 entries, 9 pairs) ---\n", .{});
+    var mid_used: usize = 0;
+    for (mid_addrs) |opt| {
+        if (opt != null) mid_used += 1;
+    }
+    try w.print("Entries used: {d} / {d}\n\n", .{ mid_used, MIDDLE_COUNT });
+
+    if (mid_used > 0) {
+        var end_addr: usize = data.len;
+        for (ext_addrs) |opt| {
+            if (opt) |addr| {
+                if (@as(usize, addr) < end_addr) end_addr = @as(usize, addr);
+            }
+        }
+        try printPairTable(w, mid_addrs, end_addr, data, arena, exp, "m");
+    }
+}
+
+fn dumpDsuPointers(w: *Io.Writer, data: []const u8, arena: Allocator, exp: ?*const ExportCtx) !void {
     var has_dsu = false;
     for (data[DSU_PTR_OFF..DSU_PTR_END]) |b| {
         if (b != 0xFF) {
@@ -510,11 +610,11 @@ fn dumpDsuPointers(w: *Io.Writer, data: []const u8, _: Allocator, exp: ?*const E
     const segment_names = [_][]const u8{ "Anf", "Loop", "End" };
 
     try w.print("\n--- DSU user sound pointers (0x0AA–0x0CD) ---\n", .{});
-    try w.print("  {s:>4}  {s:>5}  {s:>4}  {s:>8}  {s:>8}  {s:>8}  {s:>8}\n", .{
-        "Slot", "Sound", "Seg", "Offset", "Size", "Duration", "CRC32",
+    try w.print("  {s:>4}  {s:>5}  {s:>4}  {s:>8}  {s:>8}  {s:>8}  {s:>8}  {s:>3}\n", .{
+        "Slot", "Sound", "Seg", "Offset", "Size", "Duration", "CRC32", "Enc",
     });
-    try w.print("  {s:->4}  {s:->5}  {s:->4}  {s:->8}  {s:->8}  {s:->8}  {s:->8}\n", .{
-        "", "", "", "", "", "", "",
+    try w.print("  {s:->4}  {s:->5}  {s:->4}  {s:->8}  {s:->8}  {s:->8}  {s:->8}  {s:->3}\n", .{
+        "", "", "", "", "", "", "", "",
     });
 
     for (0..12) |slot| {
@@ -533,16 +633,17 @@ fn dumpDsuPointers(w: *Io.Writer, data: []const u8, _: Allocator, exp: ?*const E
         const size = if (next_addr > addr) next_addr - addr else 0;
 
         if (size <= 1) {
-            try w.print("  {d:>4}  {d:>5}  {s:>4}  0x{X:0>6}  {s:>8}  {s:>8}  {s:>8}\n", .{
-                slot + 1, sound, seg, addr, "-", "-", "-",
+            try w.print("  {d:>4}  {d:>5}  {s:>4}  0x{X:0>6}  {s:>8}  {s:>8}  {s:>8}  {s:>3}\n", .{
+                slot + 1, sound, seg, addr, "-", "-", "-", "-",
             });
         } else {
             const audio_size = size - 1; // minus trailing byte
             const dur = fmtDuration(audio_size);
-            // DSU audio is raw (not XOR-encoded) — copied verbatim from WAV files
-            const crc = Crc32.hash(data[addr..][0..audio_size]);
-            try w.print("  {d:>4}  {d:>5}  {s:>4}  0x{X:0>6}  {d:>8}  {s}  {X:0>8}\n", .{
-                slot + 1, sound, seg, addr, audio_size, dur, crc,
+            const xor = isXorEncoded(data, addr, audio_size);
+            const crc = if (xor) audioCrc32(data, addr, audio_size, arena) else Crc32.hash(data[addr..][0..audio_size]);
+            const enc: []const u8 = if (xor) "XOR" else "raw";
+            try w.print("  {d:>4}  {d:>5}  {s:>4}  0x{X:0>6}  {d:>8}  {s}  {X:0>8}  {s:>3}\n", .{
+                slot + 1, sound, seg, addr, audio_size, dur, crc, enc,
             });
 
             // Export WAV (raw, no XOR decode needed)

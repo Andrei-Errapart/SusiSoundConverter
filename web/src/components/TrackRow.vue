@@ -39,9 +39,7 @@ function handlePlay(e: Event) {
 
 function displayIndex(): string {
   if (props.isPaired) {
-    const pair = Math.floor(props.index / 2)
-    const ab = props.index % 2 === 0 ? 'A' : 'B'
-    return `${pair}${ab}`
+    return String(Math.floor(props.index / 2))
   }
   return String(props.index)
 }
@@ -69,6 +67,12 @@ function displayIndex(): string {
     <td class="col-duration">
       <template v-if="track && track.audio.length > 0">
         {{ formatDuration(track.audio.length) }}
+      </template>
+      <template v-else>&mdash;</template>
+    </td>
+    <td v-if="isPaired" class="col-loop">
+      <template v-if="track && track.loopOffset > 0">
+        {{ track.loopOffset.toLocaleString() }}
       </template>
       <template v-else>&mdash;</template>
     </td>
@@ -128,6 +132,10 @@ td {
   width: 80px;
 }
 .col-duration {
+  text-align: right;
+  width: 70px;
+}
+.col-loop {
   text-align: right;
   width: 70px;
 }

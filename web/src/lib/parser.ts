@@ -88,7 +88,10 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
     } else {
       const addr = xorDecodeAddress(raw, off)
       extAddrs.push(addr)
-      allEntries.push({ address: addr, tableKind: 'extended', slotIndex: i })
+      // Only A entries (even) participate in size computation; B is a loop point
+      if (i % 2 === 0) {
+        allEntries.push({ address: addr, tableKind: 'extended', slotIndex: i })
+      }
     }
   }
 
@@ -120,7 +123,10 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
       } else {
         const addr = xorDecodeAddress(raw, off)
         middleAddrs.push(addr)
-        allEntries.push({ address: addr, tableKind: 'middle', slotIndex: i })
+        // Only A entries (even) participate in size computation; B is a loop point
+        if (i % 2 === 0) {
+          allEntries.push({ address: addr, tableKind: 'middle', slotIndex: i })
+        }
       }
     }
   }
@@ -147,17 +153,26 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
   const sorted = [...allEntries].sort((a, b) => a.address - b.address)
   const audioMap = new Map<string, { start: number; size: number }>()
 
+  // Compute sizes, then propagate backward for duplicate addresses
+  const sizes: number[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i + 1 < sorted.length) {
+      sizes.push(sorted[i + 1].address - sorted[i].address)
+    } else {
+      sizes.push(sorted[i].address < data.length ? data.length - sorted[i].address : 0)
+    }
+  }
+  // Duplicate addresses: earlier entries get size 0 but should share the next entry's size
+  for (let i = sizes.length - 2; i >= 0; i--) {
+    if (sizes[i] === 0 && i + 1 < sorted.length && sorted[i].address === sorted[i + 1].address) {
+      sizes[i] = sizes[i + 1]
+    }
+  }
+
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i]
     const key = `${entry.tableKind}:${entry.slotIndex}`
-    let size: number
-
-    if (i + 1 < sorted.length) {
-      size = sorted[i + 1].address - entry.address
-    } else {
-      // Last entry extends to EOF
-      size = entry.address < data.length ? data.length - entry.address : 0
-    }
+    let size = sizes[i]
 
     // DSU slots have a trailing byte — subtract it
     if (entry.tableKind === 'dsu' && size > 0) {
@@ -337,7 +352,10 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
       } else {
         const addr = decoded[off] | (decoded[off + 1] << 8) | (decoded[off + 2] << 16)
         addrs.push(addr)
-        allEntries.push({ address: addr, tableKind: kind, slotIndex: i })
+        // Only A entries (even) participate in size computation; B is a loop point
+        if (i % 2 === 0) {
+          allEntries.push({ address: addr, tableKind: kind, slotIndex: i })
+        }
       }
     }
     return addrs
@@ -357,16 +375,25 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
   const sorted = [...allEntries].sort((a, b) => a.address - b.address)
   const audioMap = new Map<string, { start: number; size: number }>()
 
+  // Compute sizes, then propagate backward for duplicate addresses
+  const sizes: number[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i + 1 < sorted.length) {
+      sizes.push(sorted[i + 1].address - sorted[i].address)
+    } else {
+      sizes.push(sorted[i].address < data.length ? data.length - sorted[i].address : 0)
+    }
+  }
+  for (let i = sizes.length - 2; i >= 0; i--) {
+    if (sizes[i] === 0 && i + 1 < sorted.length && sorted[i].address === sorted[i + 1].address) {
+      sizes[i] = sizes[i + 1]
+    }
+  }
+
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i]
     const key = `${entry.tableKind}:${entry.slotIndex}`
-    let size: number
-
-    if (i + 1 < sorted.length) {
-      size = sorted[i + 1].address - entry.address
-    } else {
-      size = entry.address < data.length ? data.length - entry.address : 0
-    }
+    const size = sizes[i]
     audioMap.set(key, { start: entry.address, size: Math.max(0, size) })
   }
 

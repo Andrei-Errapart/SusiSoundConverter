@@ -198,9 +198,11 @@ The IntelliSound system supports up to 48 sound numbers in the primary table:
 Properties:
 
 - The length of each sound is determined by the difference between
-  consecutive decoded addresses.
-- Consecutive entries with the same decoded address indicate an empty
-  sound slot (zero-length audio).
+  consecutive decoded addresses, sorted globally across **all** tables
+  (primary, middle, extended). The last entry in the primary table
+  extends to the first middle or extended address, not to EOF.
+- Consecutive entries with the same decoded address are **shared
+  sounds** — both entries play the same audio data.
 - Many files use paired entries (e.g. entries 22/23 share the same
   address), especially in entries 10–17 and 22+.
 

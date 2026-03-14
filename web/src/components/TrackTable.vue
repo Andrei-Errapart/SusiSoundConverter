@@ -52,6 +52,7 @@ function usedCount(): number {
           <th class="col-index">#</th>
           <th class="col-size">Size</th>
           <th class="col-duration">Duration</th>
+          <th v-if="table.isPaired" class="col-loop">Loop</th>
           <th class="col-crc">CRC32</th>
           <th class="col-actions"></th>
         </tr>
