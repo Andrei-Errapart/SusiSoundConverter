@@ -1,0 +1,51 @@
+Soundbelegung für US-Dampflok Typ "Mogul" - holzgefeuerte Ausfühung
+
+Soundname DL-Mogul-Holz
+Artikel-Nummer 326008123
+
+
+
+#01	-	Glocke	 
+#02	-	Pfeife
+#03	-	Stand- und Fahrgeräusch 
+#04	-	Kupplungsgeräusch
+#05	-	Abläuten
+#06	-	Ansage "all aboard"
+#07	-	-
+#08	-	Fader
+#09	-	Feuerlochtüre
+#10	-	Turbogenerator			- nur zusammen mit Sound an
+#11	-	Sanden				- nicht ohne Sound an und nicht in Fahrt
+#12	-	Schaffnerpfiff   		- nicht ohne Sound an und nicht in Fahrt
+#13	-	Injektor			- auch automatisch - nicht ohne Sound an und nicht in Fahrt
+#14	-	Holzfeuerung, manuell		- auch automatisch - nicht ohne Sound an und nicht in Fahrt
+#15	-	Luftpumpe			- auch automatisch - nicht ohne Sound an und nicht in Fahrt
+#16	-	Achtungspfiff 1			- nicht ohne Sound an, auch automatisch
+#17	-	Druckluft 			- nicht ohne Sound an, auch automatisch
+#18	-	Achtungspfiff 2			- nicht ohne Sound an, passend zu Pfeife #32
+#19	-	Rangierfunk 1
+#20	-	Abblasen
+#21	-	Bremsluft
+#22	-	Rangierfunk 2 
+#23	-	Ansage "ten minutes" 
+#24	-	alternative Pfeife
+#25	-	Bläser
+#26	-	Achtungspfiff, richtungsabhängig
+#27	-	Abschlammen
+#28	-	Puffer / Ankuppeln
+#29	-	Bremse lösen
+#30	-	Kupplungsgeräusch auf / zu
+#31	-	Pfeife mit Hall-Effekt
+#32	-	alternative Pfeife  
+#33	-	alternative Pfeife
+#34	-	alternative Pfeife  
+#35 	-	alternative Glocke
+#36	-	Handbremse auf / zu
+#37	-	Glöckchen
+#38	-	Lichtschalter 
+#39	-	Türe auf / zu
+
+#92    	-	Bremsenquietschen manuell  	- nicht ohne Fahrgeräusch
+#93    	-	Kurvenquietschen manuell 	- nicht ohne Fahrgeräusch
+
+#99	-	Anfahrzischen / Offene Zylinderventile

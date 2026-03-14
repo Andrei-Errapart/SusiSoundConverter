@@ -1,0 +1,51 @@
+Soundbelegung für Schmalspurdampflok "Stainz"
+
+Soundname 99-Stainz
+Artikel-Nummer 326000988
+
+
+
+#01	-	Glocke	 
+#02	-	Pfeife
+#03	-	Stand- und Fahrgeräusch 
+#04	-	Kupplungsgeräusch
+#05	-	Schaffnerpfiff, kurz
+#06	-	Bahnhofsansage
+#07	-	-
+#08	-	Fader
+#09	-	Aschkastenklappe
+#10	-	Turbogenerator			- nur zusammen mit Sound an
+#11	-	Sanden				- nicht ohne Sound an und nicht in Fahrt
+#12	-	Schaffnerpfiff, lang		- nicht ohne Sound an und nicht in Fahrt
+#13	-	Injektor			- auch automatisch - nicht ohne Sound an und nicht in Fahrt
+#14	-	Kohleschippen			- auch automatisch - nicht ohne Sound an und nicht in Fahrt
+#15	-	Luftpumpe			- auch automatisch - nicht ohne Sound an und nicht in Fahrt
+#16	-	Achtungspfiff			- nicht ohne Sound an, auch automatisch
+#17	-	Druckluft 			- nicht ohne Sound an, auch automatisch
+#18	-	kurzer Pfiff mit Hall		- nicht ohne Sound an
+#19	-	Rangierfunk
+#20	-	Abblasen
+#21	-	Bremsluft
+#22	-	zusätzliche Ansage 
+#23	-	zusätzliche Ansage 
+#24	-	Dampfheizung 
+#25	-	zusätzliche Ansage 
+#26	-	-
+#27	-	Abschlammen
+#28	-	Puffer
+#29	-	Ansage "Gitter schließen"
+#30	-	Kupplungsgeräusch auf / zu
+#31	-	Pfeife mit Hall-Effekt
+#32	-	alternative Pfeife
+#33	-	alternative Pfeife
+#34	-	alternative Glocke
+#35 	-	alternative Glocke
+#36	-	Handbremse auf / zu
+#37	-	Lichtschalter 1
+#38	-	Lichtschalter 2
+#39	-	Türe auf / zu
+
+#92    	-	Bremsenquietschen manuell  	- nicht ohne Motor 
+#93    	-	Kurvenquietschen manuell 	- nicht ohne Motor 
+
+#99	-	Anfahrzischen / Offene Zylinderventile
