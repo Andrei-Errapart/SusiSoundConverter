@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import CopyPasteIndicator from './components/CopyPasteIndicator.vue'
 import FilePane from './components/FilePane.vue'
 import { useCopyPaste } from './composables/useCopyPaste'
 
-const { cancel } = useCopyPaste()
+const { clearSelection } = useCopyPaste()
 
 function onKeyDown(e: KeyboardEvent) {
-  if (e.key === 'Escape') cancel()
+  if (e.key === 'Escape') clearSelection()
 }
 
 onMounted(() => document.addEventListener('keydown', onKeyDown))
@@ -19,7 +18,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
     <header class="app-header">
       <h1>IntelliSound Web Editor</h1>
     </header>
-    <CopyPasteIndicator />
     <div class="panes">
       <FilePane side="left" />
       <FilePane side="right" />

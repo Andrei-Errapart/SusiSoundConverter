@@ -14,20 +14,15 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  paste: [index: number]
+  overwrite: [index: number]
 }>()
 
 const { play, isTrackPlaying } = useAudioPlayer()
-const { copyTrack, canPaste, isCopied } = useCopyPaste()
+const { selected, selectTrack, isSelected, hasSelection } = useCopyPaste()
 
 function handleClick() {
-  if (!props.track) {
-    if (canPaste(props.side)) {
-      emit('paste', props.index)
-    }
-    return
-  }
-  copyTrack(props.track, props.side)
+  if (!props.track || props.track.audio.length === 0) return
+  selectTrack(props.track, props.side, props.tableKind, props.index)
 }
 
 function handlePlay(e: Event) {
@@ -35,6 +30,19 @@ function handlePlay(e: Event) {
   if (props.track && props.track.audio.length > 0) {
     play(props.track.audio, props.side, props.tableKind, props.index)
   }
+}
+
+function canOverwrite(): boolean {
+  if (!hasSelection.value) return false
+  if (!props.track) return false
+  if (isSelected(props.side, props.tableKind, props.index)) return false
+  if (!selected.value || selected.value.track.audio.length === 0) return false
+  return true
+}
+
+function handleOverwrite(e: Event) {
+  e.stopPropagation()
+  emit('overwrite', props.index)
 }
 
 function displayIndex(): string {
@@ -50,8 +58,7 @@ function displayIndex(): string {
     :class="{
       'track-row': true,
       'track-empty': !track,
-      'track-copied': isCopied(side, tableKind, index),
-      'track-paste-target': !track && canPaste(side),
+      'track-selected': isSelected(side, tableKind, index),
       'track-playing': track && isTrackPlaying(side, tableKind, index),
     }"
     @click="handleClick"
@@ -92,6 +99,15 @@ function displayIndex(): string {
       >
         {{ isTrackPlaying(side, tableKind, index) ? '\u25A0' : '\u25B6' }}
       </button>
+      <button
+        v-if="track"
+        class="btn-overwrite"
+        :disabled="!canOverwrite()"
+        @click="handleOverwrite"
+        title="Overwrite with selected track"
+      >
+        &larr;
+      </button>
     </td>
   </tr>
 </template>
@@ -106,13 +122,10 @@ function displayIndex(): string {
 }
 .track-empty {
   color: #999;
+  cursor: default;
 }
-.track-copied {
+.track-selected {
   background: #c8f7c5 !important;
-}
-.track-paste-target:hover {
-  background: #c5daf7 !important;
-  cursor: cell;
 }
 .track-playing {
   background: #fff3cd !important;
@@ -147,7 +160,7 @@ td {
   color: #666;
 }
 .col-actions {
-  width: 36px;
+  width: 60px;
   text-align: center;
 }
 .btn-play {
@@ -164,5 +177,22 @@ td {
 }
 .btn-play.playing {
   color: #d63031;
+}
+.btn-overwrite {
+  background: none;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 6px;
+  line-height: 1.2;
+  margin-left: 2px;
+}
+.btn-overwrite:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+.btn-overwrite:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 </style>

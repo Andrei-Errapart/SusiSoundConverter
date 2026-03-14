@@ -9,11 +9,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  paste: [tableKind: string, index: number]
+  overwrite: [tableKind: string, index: number]
 }>()
 
-function handlePaste(index: number) {
-  emit('paste', props.table.kind, index)
+function handleOverwrite(index: number) {
+  emit('overwrite', props.table.kind, index)
 }
 
 // For paired tables, only show the A entries (even indices).
@@ -66,7 +66,7 @@ function usedCount(): number {
           :table-kind="table.kind"
           :is-paired="table.isPaired"
           :side="side"
-          @paste="handlePaste"
+          @overwrite="handleOverwrite"
         />
       </tbody>
     </table>
@@ -108,6 +108,6 @@ th.col-index {
   width: 50px;
 }
 th.col-actions {
-  width: 36px;
+  width: 60px;
 }
 </style>

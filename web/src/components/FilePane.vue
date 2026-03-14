@@ -11,21 +11,29 @@ const props = defineProps<{
 }>()
 
 const { file, error, flashUsed, flashTotal, loadFile, exportFile } = useSoundFile()
-const { pasteTrack } = useCopyPaste()
+const { selected, clearSelection } = useCopyPaste()
 
 function handleLoad(inputFile: File) {
   loadFile(inputFile)
 }
 
-function handlePaste(tableKind: string, index: number) {
-  if (!file.value) return
+function handleOverwrite(tableKind: string, targetIndex: number) {
+  if (!file.value || !selected.value) return
 
   const table = file.value.tables.find(t => t.kind === tableKind)
   if (!table) return
 
-  if (pasteTrack(table.slots, index, table.kind, props.side)) {
-    file.value.dirty = true
+  const source = selected.value.track
+  const newTrack = {
+    index: targetIndex,
+    table: table.kind,
+    audio: new Uint8Array(source.audio),
+    loopOffset: source.loopOffset,
   }
+
+  table.slots[targetIndex] = newTrack
+  file.value.dirty = true
+  clearSelection()
 }
 
 defineExpose({ file })
@@ -46,7 +54,7 @@ defineExpose({ file })
         :key="table.kind"
         :table="table"
         :side="side"
-        @paste="handlePaste"
+        @overwrite="handleOverwrite"
       />
     </template>
     <div v-else class="empty-pane">

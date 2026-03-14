@@ -1,84 +1,53 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Track, TrackTableKind } from '../types/sound-file'
 
 export type PaneSide = 'left' | 'right'
 
-export interface CopiedTrack {
+export interface SelectedTrack {
   track: Track
-  sourceSide: PaneSide
-  sourceTableKind: TrackTableKind
-  sourceSlotIndex: number
+  side: PaneSide
+  tableKind: TrackTableKind
+  slotIndex: number
 }
 
-const copied = ref<CopiedTrack | null>(null)
+const selected = ref<SelectedTrack | null>(null)
 
 export function useCopyPaste() {
-  function copyTrack(track: Track, side: PaneSide): void {
-    // If clicking the same track again, cancel
+  function selectTrack(track: Track, side: PaneSide, tableKind: TrackTableKind, slotIndex: number): void {
+    // Toggle off if clicking the same track
     if (
-      copied.value &&
-      copied.value.sourceSide === side &&
-      copied.value.sourceTableKind === track.table &&
-      copied.value.sourceSlotIndex === track.index
+      selected.value &&
+      selected.value.side === side &&
+      selected.value.tableKind === tableKind &&
+      selected.value.slotIndex === slotIndex
     ) {
-      cancel()
+      selected.value = null
       return
     }
 
-    copied.value = {
-      track,
-      sourceSide: side,
-      sourceTableKind: track.table,
-      sourceSlotIndex: track.index,
-    }
+    selected.value = { track, side, tableKind, slotIndex }
   }
 
-  function pasteTrack(
-    targetSlots: (Track | null)[],
-    targetIndex: number,
-    targetTableKind: TrackTableKind,
-    targetSide: PaneSide
-  ): boolean {
-    if (!copied.value) return false
-    if (copied.value.sourceSide === targetSide) return false
-
-    // Deep-copy the audio
-    const source = copied.value.track
-    const newTrack: Track = {
-      index: targetIndex,
-      table: targetTableKind,
-      audio: new Uint8Array(source.audio),
-      loopOffset: source.loopOffset,
-    }
-
-    targetSlots[targetIndex] = newTrack
-    copied.value = null
-    return true
+  function clearSelection(): void {
+    selected.value = null
   }
 
-  function cancel(): void {
-    copied.value = null
-  }
-
-  function isCopied(side: PaneSide, tableKind: TrackTableKind, slotIndex: number): boolean {
-    if (!copied.value) return false
+  function isSelected(side: PaneSide, tableKind: TrackTableKind, slotIndex: number): boolean {
+    if (!selected.value) return false
     return (
-      copied.value.sourceSide === side &&
-      copied.value.sourceTableKind === tableKind &&
-      copied.value.sourceSlotIndex === slotIndex
+      selected.value.side === side &&
+      selected.value.tableKind === tableKind &&
+      selected.value.slotIndex === slotIndex
     )
   }
 
-  function canPaste(side: PaneSide): boolean {
-    return copied.value !== null && copied.value.sourceSide !== side
-  }
+  const hasSelection = computed(() => selected.value !== null)
 
   return {
-    copied,
-    copyTrack,
-    pasteTrack,
-    cancel,
-    isCopied,
-    canPaste,
+    selected,
+    selectTrack,
+    clearSelection,
+    isSelected,
+    hasSelection,
   }
 }
