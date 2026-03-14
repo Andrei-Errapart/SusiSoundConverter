@@ -120,7 +120,8 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
     totalAudio += table.slots[slotIndex]!.audio.length
   }
 
-  const gapSize = file.preAudioGap ? file.preAudioGap.length : 0
+  const gap = !file.dirty ? file.preAudioGap : undefined
+  const gapSize = gap ? gap.length : 0
 
   // DSU extra: audio + trailing bytes
   let dsuExtra = 0
@@ -143,9 +144,9 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
 
   // Write pre-audio gap if present
   let writePos = headerSize
-  if (file.preAudioGap) {
-    output.set(file.preAudioGap, writePos)
-    writePos += file.preAudioGap.length
+  if (gap) {
+    output.set(gap, writePos)
+    writePos += gap.length
   }
 
   // Lay out audio and record addresses
@@ -345,7 +346,8 @@ function serializeDS6(file: SoundFile): Uint8Array {
     totalAudio += table.slots[slotIndex]!.audio.length
   }
 
-  const gapSize = file.preAudioGap ? file.preAudioGap.length : 0
+  const gap = !file.dirty ? file.preAudioGap : undefined
+  const gapSize = gap ? gap.length : 0
 
   const totalSize = headerSize + gapSize + totalAudio
   const output = new Uint8Array(totalSize)
@@ -361,9 +363,9 @@ function serializeDS6(file: SoundFile): Uint8Array {
 
   // Write pre-audio gap if present (decoded bytes — will be XOR'd with the rest)
   let writePos = headerSize
-  if (file.preAudioGap) {
-    output.set(file.preAudioGap, writePos)
-    writePos += file.preAudioGap.length
+  if (gap) {
+    output.set(gap, writePos)
+    writePos += gap.length
   }
 
   // Lay out audio (decoded) and record addresses
