@@ -630,34 +630,165 @@ This specification was determined by:
 - Hex analysis of three DS6 files (`99-Stainz.DS6`, `99-UNI-1.DS6`,
   `DL-Mogul-Holz.DS6`) confirming 8-bit audio, XOR-encoded body, and
   extended header layout
+- Intelli Sound Creator manual (English, 2015) — sound event to entry
+  mapping, CV parameter documentation, steam chuff layout, manual
+  transmission gear mapping
+
+---
+
+## Resolved questions
+
+Based on the *Intelli Sound Creator* manual (English, 2015), several
+previously open questions have been clarified.
+
+### 1. Sound number to entry mapping
+
+**Confirmed**: the mapping is direct. `entry_index = sound_number` for
+sounds 0–39, and `entry_index = sound_number - 52` for sounds 92–99
+(i.e. 92→40, 93→41, …, 99→47).
+
+The IntelliSound Creator's "additional sounds" table shows sounds with
+explicit "sndfl" (sound file) numbers that match the primary table
+entry indices:
+
+| Sound name                  | sndfl | Primary entry |
+|-----------------------------|-------|---------------|
+| Sound 1 (horn/bell)         | 1     | 1             |
+| Sound 2 (whistle)           | 2     | 2             |
+| Sound 3                     | 4     | 4             |
+| Sound 4                     | 5     | 5             |
+| Sound 5                     | 6     | 6             |
+| Fct on/off sound            | 9     | 9             |
+| Sound 6                     | 11    | 11            |
+| Sound 7                     | 12    | 12            |
+| Timer 1                     | 13    | 13            |
+| Timer 2                     | 14    | 14            |
+| Timer 3                     | 15    | 15            |
+| Sound while starting drive  | 16    | 16            |
+| Timer 4                     | 17    | 17            |
+| Sound 8                     | 18    | 18            |
+| Timer 5                     | 19    | 19            |
+| Sound 9                     | 20    | 20            |
+| Sound 10                    | 21    | 21            |
+| Curve squeaking              | 93    | 41            |
+
+Sounds 0, 3, 7, 8, 10, 22–39, and 92, 94–99 are used by the driving
+sound engine (standing, start, driving, stop, etc.) and vary by
+locomotive type.
+
+### 2. Extended table pair semantics
+
+**Confirmed**: the pairs are start/loop-back address pairs, same as the
+DX4 middle table. When A == B, the sound loops from the beginning.
+
+The extended table's 20 pairs map to **steam locomotive exhaust blow
+sounds**. The IntelliSound Creator's steam loco UI shows exactly 20
+driving sounds for a 2-cylinder steam locomotive:
+
+| Pairs | Driving state      | Sounds                                    |
+|-------|--------------------|-------------------------------------------|
+| 4     | Load               | cylinder 1a, 1b, 2a, 2b                   |
+| 4     | Load → normal      | cylinder 1a, 1b, 2a, 2b                   |
+| 4     | Normal             | cylinder 1a, 1b, 2a, 2b                   |
+| 4     | Normal → idle      | cylinder 1a, 1b, 2a, 2b                   |
+| 4     | Idle               | cylinder 1a, 1b, 2a, 2b                   |
+
+Each cylinder sound can have distinct start and loop-back points.
+
+### 3. Configuration region semantics — CV mapping
+
+**Partially resolved**. The IntelliSound Creator documents extensive
+CV-to-parameter mappings for the configuration region. The CVs use
+SUSI numbering (CV 900–939) and control playback behaviour:
+
+**Volumes** (CVs with 'b' suffix):
+- CV900b: Volume steam chuff
+- CV901b–938b: Per-sound volumes (sounds 1–38)
+- CV903b: Volume engine sound
+- CV933b: Volume curve squeaking
+- CV936b: Volume switching click (electric loco)
+- CV937b: Volume brake squeaking
+
+**Engine/driving parameters** (CVs with 'a' or 'c' suffix):
+- CV900c: Diesel engine ramp after idle state (deceleration per speed step, 4ms units)
+- CV901c–906c: Speed step to switch to gear 2–7 (manual transmission)
+- CV914c–920c: Pull range for gear 1–7
+- CV927a: Load time activated by acceleration / increasing load
+- CV927c–933c: Time ramp in gear 1–7 (inertia, value × 4ms per speed step)
+- CV934a: Standing time for automatic start sound (0 = 1s, 255 = no start sound)
+
+**Thresholds and triggers**:
+- CV919a Bit0: Idle state if speed step = 0
+- CV919a Bit1: Brake squealing ends with speed > 0
+- CV922a: Speed step for starting curve squeaking
+- CV923a: Speed step for stopping curve squeaking
+- CV924a: Function key for switching off curve squeaking (31 = always on)
+- CV933a: Waiting time for automatic start of sound #16
+- CV935 Bit0: Exhaust blow only via reed input
+- CV935 Bit1: Exhaust blow auto and via reed input
+- CV936: Threshold brake squealing (255 = no brake squeaking)
+- CV936a: Threshold load recognition "slower"
+- CV937: Idle state time in seconds (0 = off, 255 = always on)
+- CV937a: Sensitivity to load changes
+- CV938: Time between two steam chuffs at max speed
+- CV938a: Threshold if motor load increases (128 = no trigger)
+- CV939: Time between two steam chuffs at min speed
+- CV939a: Threshold if motor load decreases (128 = no trigger)
+
+**Smoke generator** (electric output SA1):
+- CV929a: Smoke output while standing (%)
+- CV930a: Smoke output while driving (%)
+- CV931a: Smoke output during engine idle / during start (%)
+- CV934: Fan switching on threshold (electric loco)
+
+**Function key assignments** (CV903–931 range): multiple CVs share this
+range, each assigning a function key (F0–F28) to a sound event
+(engine on/off, start sound manually, brake squealing off, fan, smoke
+always on/off, etc.).
+
+> **TODO**: The exact byte-to-CV mapping within the 50-byte region at
+> 0xCE–0xFF has not been fully determined. The 'a', 'b', 'c' suffixes
+> suggest sub-byte or paired addressing. Comparison of decoded config
+> bytes with default CV values from the manual could resolve this.
+
+### 6. DX4 middle table sound mapping
+
+**Resolved**. The IntelliSound Creator's "diesel locomotive with manual
+transmission" mode shows exactly 9 driving sounds that correspond to
+the 9 pairs in the middle table:
+
+| Pair | Sound                    |
+|------|--------------------------|
+| 0    | 1st gear                 |
+| 1    | 1st → 2nd gear           |
+| 2    | 2nd → 1st gear           |
+| 3    | 2nd gear                 |
+| 4    | 2nd → 3rd gear           |
+| 5    | 3rd → 2nd gear           |
+| 6    | 3rd gear                 |
+| 7    | Stop                     |
+| 8    | Driving to idle state    |
+
+The transmission settings (CV901c–906c) define the speed steps at
+which gear shifts occur, and pull range per gear (CV914c–920c) controls
+maximum playback speed-up in each gear. Up to 7 gears are supported,
+though 3 gears are typical.
 
 ---
 
 ## Open questions
 
-1. **Sound number to entry mapping**: Which sound numbers (0–39, 92–99)
-   correspond to which entry indices in the primary table (0–47)? Is the
-   mapping simply `entry_index = sound_number` for 0–39, with 92–99
-   mapped to entries 40–47?
+1. **Configuration byte-to-CV mapping**: The exact mapping from the 50
+   decoded bytes at 0xCE–0xFF to the SUSI CV numbers (with 'a', 'b', 'c'
+   sub-addressing) remains unverified. The 'a'/'b' suffixes may encode
+   high/low nibbles or consecutive byte pairs.
 
-2. **Extended table pair semantics**: Each pair of entries in the extended
-   table decodes to the same address in all observed files. Are these
-   start/loop-back pairs (like the middle table in DX4), or do they
-   serve another purpose?
-
-3. **Configuration region semantics**: The 50 decoded bytes at 0xCE–0xFF
-   likely encode playback parameters (speed ramp, volume curves) or CV
-   defaults. The exact byte-to-parameter mapping is unknown.
-
-4. **DS6 extended table semantics**: Extended tables 1–3 contain 44 + 78 +
+2. **DS6 extended table semantics**: Extended tables 1–3 contain 44 + 78 +
    8 = 130 pairs. Which sound numbers map to which pairs? How do the
    sentinel entries (incrementing-by-1 addresses) in table 2 interact
-   with the real entries?
+   with the real entries? (The IntelliSound Creator manual covers IS4
+   only, not DS6/IS6.)
 
-5. **DS6 metadata region (0x536–0x626)**: 241 bytes of unknown purpose
+3. **DS6 metadata region (0x536–0x626)**: 241 bytes of unknown purpose
    between the sound name and audio data. Likely contains additional
    configuration or playback parameters.
-
-6. **DX4 middle table sound mapping**: Which sound numbers correspond to
-   the 9 pairs in the middle track index? The X-clusive-S V4 module
-   supports more sounds than the standard IntelliSound.
