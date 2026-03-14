@@ -1,66 +1,51 @@
 import { SAMPLE_RATE } from './constants'
 
-let currentAudio: HTMLAudioElement | null = null
-let currentUrl: string | null = null
+let audioCtx: AudioContext | null = null
+let currentSource: AudioBufferSourceNode | null = null
+
+function getContext(): AudioContext {
+  if (!audioCtx) {
+    audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE })
+  }
+  return audioCtx
+}
 
 /** Stop any currently playing audio. */
 export function stopPlayback(): void {
-  if (currentAudio) {
-    currentAudio.pause()
-    currentAudio.onended = null
-    currentAudio = null
-  }
-  if (currentUrl) {
-    URL.revokeObjectURL(currentUrl)
-    currentUrl = null
+  if (currentSource) {
+    try { currentSource.stop() } catch { /* already stopped */ }
+    currentSource = null
   }
 }
 
 /**
- * Build a WAV blob from 8-bit unsigned PCM at 13,021 Hz
- * and play it via an <audio> element (avoids Web Audio API quirks).
+ * Play 8-bit unsigned PCM audio at 13,021 Hz.
  */
 export function playTrack(audio: Uint8Array, onEnded?: () => void): void {
   stopPlayback()
 
-  // Build a minimal WAV file: 44-byte header + raw 8-bit PCM data
-  const wavLen = 44 + audio.length
-  const wav = new Uint8Array(wavLen)
-  const view = new DataView(wav.buffer)
+  const ctx = getContext()
+  if (ctx.state === 'suspended') {
+    ctx.resume()
+  }
 
-  // RIFF header
-  wav[0] = 0x52; wav[1] = 0x49; wav[2] = 0x46; wav[3] = 0x46 // "RIFF"
-  view.setUint32(4, wavLen - 8, true) // file size - 8
-  wav[8] = 0x57; wav[9] = 0x41; wav[10] = 0x56; wav[11] = 0x45 // "WAVE"
+  const buffer = ctx.createBuffer(1, audio.length, SAMPLE_RATE)
+  const channel = buffer.getChannelData(0)
 
-  // fmt chunk
-  wav[12] = 0x66; wav[13] = 0x6D; wav[14] = 0x74; wav[15] = 0x20 // "fmt "
-  view.setUint32(16, 16, true)        // chunk size
-  view.setUint16(20, 1, true)         // PCM format
-  view.setUint16(22, 1, true)         // mono
-  view.setUint32(24, SAMPLE_RATE, true) // sample rate (13021)
-  view.setUint32(28, SAMPLE_RATE, true) // byte rate (sampleRate * 1 channel * 1 byte)
-  view.setUint16(32, 1, true)         // block align (1 channel * 1 byte)
-  view.setUint16(34, 8, true)         // bits per sample
+  // Convert 8-bit unsigned to float32: (byte - 128) / 128
+  for (let i = 0; i < audio.length; i++) {
+    channel[i] = (audio[i] - 128) / 128
+  }
 
-  // data chunk
-  wav[36] = 0x64; wav[37] = 0x61; wav[38] = 0x74; wav[39] = 0x61 // "data"
-  view.setUint32(40, audio.length, true)
-
-  // Copy PCM samples
-  wav.set(audio, 44)
-
-  const blob = new Blob([wav], { type: 'audio/wav' })
-  const url = URL.createObjectURL(blob)
-  currentUrl = url
-
-  const el = new Audio(url)
-  currentAudio = el
-  el.onended = () => {
-    stopPlayback()
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+  source.connect(ctx.destination)
+  source.onended = () => {
+    if (currentSource === source) {
+      currentSource = null
+    }
     onEnded?.()
   }
-  el.play().catch(() => {
-    // Autoplay blocked — ignore
-  })
+  source.start()
+  currentSource = source
 }
