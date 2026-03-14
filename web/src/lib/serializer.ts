@@ -97,12 +97,14 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
   const addressMap = new Map<string, number>()
   let writePos = headerSize
 
-  // Write primary/middle/extended audio
+  // Write primary/middle/extended audio (XOR-encode back to file format)
   for (const { table, slotIndex } of audioOrder) {
     const slot = table.slots[slotIndex]!
     const key = `${table.kind}:${slotIndex}`
     addressMap.set(key, writePos)
-    output.set(slot.audio, writePos)
+    for (let j = 0; j < slot.audio.length; j++) {
+      output[writePos + j] = slot.audio[j] ^ ((writePos + j) & 0xFF)
+    }
     writePos += slot.audio.length
   }
 
