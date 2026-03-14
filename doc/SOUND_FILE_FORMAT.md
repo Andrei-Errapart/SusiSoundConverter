@@ -71,6 +71,14 @@ DS6 audio offset: 0x627. DS3/DX4 audio offset: 0x300.
 
 Total header size: **768 bytes** (0x300).
 
+> **Pre-audio gap**: In some files, the lowest track address is greater
+> than 0x300, leaving a gap of unused bytes between the header and the
+> first audio sample. This gap has no known semantic meaning and is
+> likely an artefact of the authoring tool. It must be accounted for
+> when computing track sizes (track 0 does not necessarily start at
+> 0x300). For byte-perfect roundtrips, the gap should be preserved
+> when re-exporting an unmodified file.
+
 ### DSU
 
 A DSU file is a DS3 base file with user sound data appended and a pointer
@@ -111,6 +119,9 @@ tables. The entire file — header and audio — is XOR-encoded (see
 | 0x627  | to EOF | Audio data (8-bit unsigned PCM, XOR-encoded)        |
 
 Total header size: **1,575 bytes** (0x627).
+
+> **Pre-audio gap**: As with DS3/DX4, some DS6 files have a gap between
+> 0x627 and the lowest track address. See the DS3/DX4 note above.
 
 Each pair in the extended tables consists of two consecutive 3-byte entries
 (A and B). In most cases A == B. When A ≠ B, A is the start address and
@@ -268,6 +279,13 @@ decodes to the same address. The 40 entries represent 20 sounds.
 
 The pairing likely encodes start and loop-back addresses (which happen
 to be identical in all observed files for this table).
+
+**Track boundary rule for paired tables**: Only the A entry (even index)
+of each pair defines a track boundary for computing audio sizes. The B
+entry (odd index) is a loop-back address within the same track and does
+not participate in the sorted address list used for size computation.
+This applies to the extended table, the DX4 middle table, and all three
+DS6 extended tables.
 
 Used by files with many sounds (e.g. 99-Spreewald, DL-USA-Holz, all
 DX4 files); all `FF` in simpler files (e.g. SB-ALT).
