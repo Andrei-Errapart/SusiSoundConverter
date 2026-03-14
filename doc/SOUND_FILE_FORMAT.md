@@ -14,8 +14,8 @@ and Dietz micro-IS4 V2 manuals.
 ## Format family
 
 All formats share the same magic number (`DD 33`), header-plus-audio structure,
-and XOR scrambling scheme. They differ in header regions used and audio
-appended.
+and XOR scrambling scheme (applied to track indices, configuration, and audio
+data). They differ in header regions used and audio appended.
 
 | Extension | Bit depth | Modules        | Description                          |
 |-----------|-----------|----------------|--------------------------------------|
@@ -67,7 +67,7 @@ DS6 audio offset: 0x627. DS3/DX4 audio offset: 0x300.
 | 0x0CE  | 50     | Configuration / CV data (XOR-encoded)           | (same)                                        |
 | 0x100  | 120    | Extended track index (40 × 3-byte entries)      | (same)                                        |
 | 0x178  | 392    | Padding (`FF`)                                  | (same)                                        |
-| 0x300  | to EOF | Audio data                                      | (same)                                        |
+| 0x300  | to EOF | Audio data (XOR-encoded)                        | (same)                                        |
 
 Total header size: **768 bytes** (0x300).
 
@@ -81,8 +81,8 @@ table patched into the header:
 | 0x000    | 0x0AA         | DS3 header (copied verbatim from base file)    |
 | 0x0AA    | 36            | User sound pointer table (12 × 3-byte LE24)   |
 | 0x0CE    | 0x232         | Remainder of DS3 header (copied verbatim)      |
-| 0x300    | base_audio_len| DS3 audio data (copied verbatim)               |
-| base_end | variable      | User sound audio data (12 slots, concatenated) |
+| 0x300    | base_audio_len| DS3 audio data (XOR-encoded, copied verbatim)  |
+| base_end | variable      | User sound audio data (raw, 12 slots)          |
 
 Total file size = DS3 base size + sum of all user sound slot sizes.
 
@@ -108,7 +108,7 @@ tables. The entire file — header and audio — is XOR-encoded (see
 | 0x4C0  | 102    | Padding (`FF`)                                     |
 | 0x526  | 16     | Embedded sound name (ASCII, space-padded, XOR)     |
 | 0x536  | 241    | Metadata / configuration                           |
-| 0x627  | to EOF | Audio data (8-bit unsigned PCM, XOR-encoded)       |
+| 0x627  | to EOF | Audio data (8-bit unsigned PCM, XOR-encoded)        |
 
 Total header size: **1,575 bytes** (0x627).
 
@@ -130,12 +130,16 @@ by 1 from a boundary value, resulting in zero-length (1-byte) entries.
 All track index entries and the configuration region use the same XOR
 scheme: each byte at file offset N is stored as `value XOR (N & 0xFF)`.
 
-In DS3/DX4/DSU, only the track indices and configuration region are XOR-
-encoded; the magic, format tag, padding, and audio data are stored raw.
-In DS6, the **entire file** (header + audio) is XOR-encoded. The magic
-(`DD 33`) and format tag (`25 05`) still appear raw in the file because
-the XOR key at offset 0 is `0x00` (and the format tag values were chosen
-to encode correctly at offsets 2–3).
+In all formats, the track indices, configuration region, and **audio
+data** are XOR-encoded. The magic number and format tag are stored raw
+(the XOR key at offset 0 is `0x00`, so the first byte is unchanged;
+the format tag values were chosen to encode correctly at offsets 2–3).
+Padding bytes (`FF`) are not meaningful after XOR decoding.
+
+The only exception is **DSU user sound data**: audio appended by the
+SUSI-SoundManager is stored raw (not XOR-encoded), since it is copied
+verbatim from WAV files. The original DS3 audio region within a DSU
+file remains XOR-encoded.
 
 To decode a 3-byte entry at file offset `base`:
 
@@ -330,7 +334,10 @@ For a DS3 base of 651,982 bytes (0x09F2CE):
 ## User sound audio data (DSU only)
 
 Immediately following the DS3 base data, the 12 slots are stored
-contiguously in the same order as the pointer table. Each slot contains:
+contiguously in the same order as the pointer table. Unlike the base
+DS3 audio, user sound audio is **not XOR-encoded** — it is copied
+verbatim from the source WAV files (with byte clamping, see below).
+Each slot contains:
 
 ### Filled slot (WAV file assigned)
 
@@ -493,7 +500,14 @@ At 13,021 Hz, maximum recording duration is ~322 s (32 Mbit) or
 
 ### Audio data characteristics
 
-- The audio is raw unsigned 8-bit PCM.
+- The audio is unsigned 8-bit PCM, XOR-encoded in the file (see
+  [XOR scrambling](#xor-scrambling)). Each byte at file offset N is
+  stored as `sample XOR (N & 0xFF)`. The XOR key repeats every 256
+  bytes, which at 13,021 Hz produces a ~50.9 Hz modulation artefact
+  if played without decoding.
+- **Exception**: DSU user sound data (appended after the DS3 base) is
+  stored raw — not XOR-encoded — because it is copied verbatim from
+  WAV files by the SUSI-SoundManager.
 - Byte values `0x00` and `0xFF` are avoided in DSU user sound regions
   by clamping to `0x01` and `0xFE` respectively (see above). The base
   DS3/DX4 audio data does not have this restriction.
@@ -502,8 +516,6 @@ At 13,021 Hz, maximum recording duration is ~322 s (32 Mbit) or
   audio stream.
 - The total audio duration is `(file_size - header_size) / 13021`,
   where header_size is 0x300 for DS3/DX4/DSU or 0x627 for DS6.
-- DS6 audio data is XOR-encoded (see [XOR scrambling](#xor-scrambling));
-  DS3/DX4 audio data is stored raw.
 
 ---
 
