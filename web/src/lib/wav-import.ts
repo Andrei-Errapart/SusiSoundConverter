@@ -1,7 +1,37 @@
 import { SAMPLE_RATE } from './constants'
 
 /**
- * Parse a WAV file and convert its audio to 8-bit unsigned mono PCM at 13,021 Hz.
+ * Resample Float32 mono audio to SAMPLE_RATE, then convert to 8-bit unsigned PCM.
+ */
+function floatMonoToUint8(mono: Float32Array, srcRate: number): Uint8Array {
+  // Resample to 13,021 Hz
+  let resampled: Float32Array
+  if (srcRate === SAMPLE_RATE) {
+    resampled = mono
+  } else {
+    const ratio = srcRate / SAMPLE_RATE
+    const outLen = Math.round(mono.length / ratio)
+    resampled = new Float32Array(outLen)
+    for (let i = 0; i < outLen; i++) {
+      const srcIdx = i * ratio
+      const idx0 = Math.floor(srcIdx)
+      const idx1 = Math.min(idx0 + 1, mono.length - 1)
+      const frac = srcIdx - idx0
+      resampled[i] = mono[idx0] * (1 - frac) + mono[idx1] * frac
+    }
+  }
+
+  // Convert to 8-bit unsigned
+  const result = new Uint8Array(resampled.length)
+  for (let i = 0; i < resampled.length; i++) {
+    const clamped = Math.max(-1, Math.min(1, resampled[i]))
+    result[i] = Math.max(0, Math.min(255, Math.round(clamped * 128 + 128)))
+  }
+  return result
+}
+
+/**
+ * Parse a WAV file and convert to 8-bit unsigned mono PCM at 13,021 Hz.
  */
 export function importWav(buffer: ArrayBuffer): Uint8Array {
   const view = new DataView(buffer)
@@ -55,7 +85,12 @@ export function importWav(buffer: ArrayBuffer): Uint8Array {
     throw new Error(`Unsupported bit depth: ${bitsPerSample}`)
   }
 
-  // --- Decode to Float32 mono ---
+  // Already in target format — return raw data directly
+  if (sampleRate === SAMPLE_RATE && bitsPerSample === 8 && numChannels === 1) {
+    return new Uint8Array(buffer, dataOffset, dataSize)
+  }
+
+  // Decode to Float32 mono
   const bytesPerSample = bitsPerSample / 8
   const frameSize = bytesPerSample * numChannels
   const frameCount = Math.floor(dataSize / frameSize)
@@ -73,7 +108,7 @@ export function importWav(buffer: ArrayBuffer): Uint8Array {
       } else { // 24-bit
         const lo = view.getUint8(pos)
         const mid = view.getUint8(pos + 1)
-        const hi = view.getInt8(pos + 2) // signed for sign extension
+        const hi = view.getInt8(pos + 2)
         sample = ((hi << 16) | (mid << 8) | lo) / 8388608
       }
       sum += sample
@@ -81,35 +116,32 @@ export function importWav(buffer: ArrayBuffer): Uint8Array {
     mono[i] = sum / numChannels
   }
 
-  // --- Check if already in target format (skip conversion) ---
-  if (sampleRate === SAMPLE_RATE && bitsPerSample === 8 && numChannels === 1) {
-    // Already 8-bit unsigned mono at 13,021 Hz — return raw data directly
-    return new Uint8Array(buffer, dataOffset, dataSize)
-  }
+  return floatMonoToUint8(mono, sampleRate)
+}
 
-  // --- Resample to 13,021 Hz ---
-  let resampled: Float32Array
-  if (sampleRate === SAMPLE_RATE) {
-    resampled = mono
-  } else {
-    const ratio = sampleRate / SAMPLE_RATE
-    const outLen = Math.round(mono.length / ratio)
-    resampled = new Float32Array(outLen)
-    for (let i = 0; i < outLen; i++) {
-      const srcIdx = i * ratio
-      const idx0 = Math.floor(srcIdx)
-      const idx1 = Math.min(idx0 + 1, mono.length - 1)
-      const frac = srcIdx - idx0
-      resampled[i] = mono[idx0] * (1 - frac) + mono[idx1] * frac
+/**
+ * Import any browser-supported audio format (MP3, OGG, FLAC, WAV, etc.)
+ * using the Web Audio API, and convert to 8-bit unsigned mono PCM at 13,021 Hz.
+ */
+export async function importAudioFile(buffer: ArrayBuffer): Promise<Uint8Array> {
+  const ctx = new OfflineAudioContext(1, 1, SAMPLE_RATE)
+  const audioBuffer = await ctx.decodeAudioData(buffer)
+
+  // Mix down to mono
+  const length = audioBuffer.length
+  const mono = new Float32Array(length)
+  const nChannels = audioBuffer.numberOfChannels
+  for (let ch = 0; ch < nChannels; ch++) {
+    const channelData = audioBuffer.getChannelData(ch)
+    for (let i = 0; i < length; i++) {
+      mono[i] += channelData[i]
+    }
+  }
+  if (nChannels > 1) {
+    for (let i = 0; i < length; i++) {
+      mono[i] /= nChannels
     }
   }
 
-  // --- Convert to 8-bit unsigned ---
-  const result = new Uint8Array(resampled.length)
-  for (let i = 0; i < resampled.length; i++) {
-    const clamped = Math.max(-1, Math.min(1, resampled[i]))
-    result[i] = Math.max(0, Math.min(255, Math.round(clamped * 128 + 128)))
-  }
-
-  return result
+  return floatMonoToUint8(mono, audioBuffer.sampleRate)
 }

@@ -2,7 +2,7 @@
 import type { PaneSide } from '../composables/useCopyPaste'
 import { useSoundFile } from '../composables/useSoundFile'
 import { useCopyPaste } from '../composables/useCopyPaste'
-import { importWav } from '../lib/wav-import'
+import { importWav, importAudioFile } from '../lib/wav-import'
 import FileToolbar from './FileToolbar.vue'
 import FlashUsageBar from './FlashUsageBar.vue'
 import TrackTable from './TrackTable.vue'
@@ -45,7 +45,8 @@ async function handleImportWav(tableKind: string, targetIndex: number, wavFile: 
 
   try {
     const buffer = await wavFile.arrayBuffer()
-    const audio = importWav(buffer)
+    const isWav = wavFile.name.toLowerCase().endsWith('.wav')
+    const audio = isWav ? importWav(buffer) : await importAudioFile(buffer)
 
     table.slots[targetIndex] = {
       index: targetIndex,

@@ -129,7 +129,7 @@ function displayIndex(): string {
         v-if="track"
         class="btn-import"
         @click="handleImportClick"
-        title="Import WAV file"
+        title="Import audio file (WAV, MP3)"
       >
         &#x1F4C2;
       </button>
@@ -137,7 +137,7 @@ function displayIndex(): string {
         v-if="track"
         ref="fileInput"
         type="file"
-        accept=".wav"
+        accept=".wav,.mp3"
         style="display: none"
         @change="handleFileSelected"
       >
