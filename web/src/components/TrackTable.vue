@@ -10,10 +10,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   overwrite: [tableKind: string, index: number]
+  'import-wav': [tableKind: string, index: number, file: File]
 }>()
 
 function handleOverwrite(index: number) {
   emit('overwrite', props.table.kind, index)
+}
+
+function handleImportWav(index: number, file: File) {
+  emit('import-wav', props.table.kind, index, file)
 }
 
 // For paired tables, only show the A entries (even indices).
@@ -67,6 +72,7 @@ function usedCount(): number {
           :is-paired="table.isPaired"
           :side="side"
           @overwrite="handleOverwrite"
+          @import-wav="handleImportWav"
         />
       </tbody>
     </table>

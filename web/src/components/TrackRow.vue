@@ -4,6 +4,7 @@ import { formatDuration } from '../lib/track-utils'
 import { crc32hex } from '../lib/crc32'
 import { useAudioPlayer } from '../composables/useAudioPlayer'
 import { useCopyPaste, type PaneSide } from '../composables/useCopyPaste'
+import { ref } from 'vue'
 
 const props = defineProps<{
   track: Track | null
@@ -15,7 +16,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   overwrite: [index: number]
+  'import-wav': [index: number, file: File]
 }>()
+
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const { play, isTrackPlaying } = useAudioPlayer()
 const { selected, selectTrack, isSelected, hasSelection } = useCopyPaste()
@@ -43,6 +47,19 @@ function canOverwrite(): boolean {
 function handleOverwrite(e: Event) {
   e.stopPropagation()
   emit('overwrite', props.index)
+}
+
+function handleImportClick(e: Event) {
+  e.stopPropagation()
+  fileInput.value?.click()
+}
+
+function handleFileSelected() {
+  const file = fileInput.value?.files?.[0]
+  if (file) {
+    emit('import-wav', props.index, file)
+    fileInput.value!.value = ''
+  }
 }
 
 function displayIndex(): string {
@@ -108,6 +125,22 @@ function displayIndex(): string {
       >
         &larr;
       </button>
+      <button
+        v-if="track"
+        class="btn-import"
+        @click="handleImportClick"
+        title="Import WAV file"
+      >
+        &#x1F4C2;
+      </button>
+      <input
+        v-if="track"
+        ref="fileInput"
+        type="file"
+        accept=".wav"
+        style="display: none"
+        @change="handleFileSelected"
+      >
     </td>
   </tr>
 </template>
@@ -194,5 +227,18 @@ td {
 .btn-overwrite:disabled {
   opacity: 0.3;
   cursor: default;
+}
+.btn-import {
+  background: none;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 6px;
+  line-height: 1.2;
+  margin-left: 2px;
+}
+.btn-import:hover {
+  background: #e0e0e0;
 }
 </style>

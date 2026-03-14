@@ -2,6 +2,7 @@
 import type { PaneSide } from '../composables/useCopyPaste'
 import { useSoundFile } from '../composables/useSoundFile'
 import { useCopyPaste } from '../composables/useCopyPaste'
+import { importWav } from '../lib/wav-import'
 import FileToolbar from './FileToolbar.vue'
 import FlashUsageBar from './FlashUsageBar.vue'
 import TrackTable from './TrackTable.vue'
@@ -36,6 +37,28 @@ function handleOverwrite(tableKind: string, targetIndex: number) {
   clearSelection()
 }
 
+async function handleImportWav(tableKind: string, targetIndex: number, wavFile: File) {
+  if (!file.value) return
+
+  const table = file.value.tables.find(t => t.kind === tableKind)
+  if (!table) return
+
+  try {
+    const buffer = await wavFile.arrayBuffer()
+    const audio = importWav(buffer)
+
+    table.slots[targetIndex] = {
+      index: targetIndex,
+      table: table.kind,
+      audio,
+      loopOffset: 0,
+    }
+    file.value.dirty = true
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to import WAV file'
+  }
+}
+
 defineExpose({ file })
 </script>
 
@@ -55,6 +78,7 @@ defineExpose({ file })
         :table="table"
         :side="side"
         @overwrite="handleOverwrite"
+        @import-wav="handleImportWav"
       />
     </template>
     <div v-else class="empty-pane">
