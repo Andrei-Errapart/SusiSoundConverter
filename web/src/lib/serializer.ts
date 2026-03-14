@@ -28,6 +28,41 @@ export function serializeFile(file: SoundFile): Uint8Array {
   return serializeDS3Family(file)
 }
 
+interface AudioEntry { table: TrackTable; slotIndex: number }
+
+/** Deduplicate audio blocks: within each table, find slots that shared the same
+ *  original address (i.e. pointed to the same audio block in the source file)
+ *  and return only unique blocks plus a map from duplicate keys to canonical keys. */
+function deduplicateAudio(
+  audioOrder: AudioEntry[]
+): { uniqueOrder: AudioEntry[]; sharedWith: Map<string, string> } {
+  const uniqueOrder: AudioEntry[] = []
+  const sharedWith = new Map<string, string>()
+  // Map from "tableKind:originalAddress" to the canonical key
+  const addrToCanon = new Map<string, string>()
+
+  for (const entry of audioOrder) {
+    const { table, slotIndex } = entry
+    const slot = table.slots[slotIndex]!
+    const key = `${table.kind}:${slotIndex}`
+    const origAddr = slot.originalAddress
+
+    if (origAddr !== undefined) {
+      const addrKey = `${table.kind}:@${origAddr}`
+      const canonKey = addrToCanon.get(addrKey)
+      if (canonKey !== undefined) {
+        sharedWith.set(key, canonKey)
+        continue
+      }
+      addrToCanon.set(addrKey, key)
+    }
+
+    uniqueOrder.push(entry)
+  }
+
+  return { uniqueOrder, sharedWith }
+}
+
 function serializeDS3Family(file: SoundFile): Uint8Array {
   const headerSize = DS3_HEADER_SIZE
 
@@ -37,16 +72,14 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
   const extendedTable = file.tables.find(t => t.kind === 'extended')
   const dsuTable = file.tables.find(t => t.kind === 'dsu')
 
-  // Calculate total audio size (primary + middle + extended)
-  let totalAudio = 0
-  const audioOrder: { table: TrackTable; slotIndex: number }[] = []
+  // Collect all slots with audio
+  const audioOrder: AudioEntry[] = []
 
   // Primary tracks first
   if (primaryTable) {
     for (let i = 0; i < primaryTable.slots.length; i++) {
       const slot = primaryTable.slots[i]
       if (slot && slot.audio.length > 0) {
-        totalAudio += slot.audio.length
         audioOrder.push({ table: primaryTable, slotIndex: i })
       }
     }
@@ -57,7 +90,6 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
     for (let i = 0; i < middleTable.slots.length; i++) {
       const slot = middleTable.slots[i]
       if (slot && slot.audio.length > 0) {
-        totalAudio += slot.audio.length
         audioOrder.push({ table: middleTable, slotIndex: i })
       }
     }
@@ -68,11 +100,27 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
     for (let i = 0; i < extendedTable.slots.length; i++) {
       const slot = extendedTable.slots[i]
       if (slot && slot.audio.length > 0) {
-        totalAudio += slot.audio.length
         audioOrder.push({ table: extendedTable, slotIndex: i })
       }
     }
   }
+
+  // Sort by original address to preserve original disk layout
+  audioOrder.sort((a, b) => {
+    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? 0
+    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? 0
+    return addrA - addrB
+  })
+
+  // Deduplicate audio blocks within each table
+  const { uniqueOrder, sharedWith } = deduplicateAudio(audioOrder)
+
+  let totalAudio = 0
+  for (const { table, slotIndex } of uniqueOrder) {
+    totalAudio += table.slots[slotIndex]!.audio.length
+  }
+
+  const gapSize = file.preAudioGap ? file.preAudioGap.length : 0
 
   // DSU extra: audio + trailing bytes
   let dsuExtra = 0
@@ -87,18 +135,24 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
     }
   }
 
-  const totalSize = headerSize + totalAudio + dsuExtra
+  const totalSize = headerSize + gapSize + totalAudio + dsuExtra
   const output = new Uint8Array(totalSize)
 
   // Copy header template
   output.set(file.headerTemplate.subarray(0, headerSize))
 
+  // Write pre-audio gap if present
+  let writePos = headerSize
+  if (file.preAudioGap) {
+    output.set(file.preAudioGap, writePos)
+    writePos += file.preAudioGap.length
+  }
+
   // Lay out audio and record addresses
   const addressMap = new Map<string, number>()
-  let writePos = headerSize
 
-  // Write primary/middle/extended audio (XOR-encode back to file format)
-  for (const { table, slotIndex } of audioOrder) {
+  // Write unique audio blocks (XOR-encode back to file format)
+  for (const { table, slotIndex } of uniqueOrder) {
     const slot = table.slots[slotIndex]!
     const key = `${table.kind}:${slotIndex}`
     addressMap.set(key, writePos)
@@ -108,14 +162,13 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
     writePos += slot.audio.length
   }
 
-  // For entries that have the same address as another (e.g., paired entries
-  // where A == B, or multiple primary entries sharing an address), we need
-  // to handle the case where a slot exists but has no audio of its own
-  // (its audio is covered by another entry). Record their addresses too.
+  // Point duplicate slots to their canonical block's address
+  for (const [dupKey, canonKey] of sharedWith) {
+    addressMap.set(dupKey, addressMap.get(canonKey)!)
+  }
 
   // Write header: primary track entries
   if (primaryTable) {
-    // Entries pointing to same audio as previous: reuse their address
     writePrimaryEntries(output, primaryTable, addressMap, PRIMARY_OFF, PRIMARY_COUNT)
   }
 
@@ -215,10 +268,10 @@ function writePairedEntries(
         addr = findNextAddress(table, i, addressMap)
       }
 
-      // For B entry in a pair where A != B, compute B address from loop offset
+      // For B entry in a pair, compute B address from A address + loop offset
       if (i % 2 === 1) {
         const aSlot = table.slots[i - 1]
-        if (aSlot && aSlot.loopOffset > 0) {
+        if (aSlot) {
           const aKey = `${table.kind}:${i - 1}`
           const aAddr = addressMap.get(aKey)
           if (aAddr !== undefined) {
@@ -264,33 +317,40 @@ function serializeDS6(file: SoundFile): Uint8Array {
   const ext2Table = file.tables.find(t => t.kind === 'ds6_ext2')
   const ext3Table = file.tables.find(t => t.kind === 'ds6_ext3')
 
-  // Calculate total audio
-  let totalAudio = 0
-  const audioOrder: { table: TrackTable; slotIndex: number }[] = []
+  // Collect all slots with audio
+  const audioOrder: AudioEntry[] = []
 
   for (const table of [primaryTable, ext1Table, ext2Table, ext3Table]) {
     if (!table) continue
     for (let i = 0; i < table.slots.length; i++) {
       const slot = table.slots[i]
       if (slot && slot.audio.length > 0) {
-        totalAudio += slot.audio.length
         audioOrder.push({ table, slotIndex: i })
       }
     }
   }
 
-  const totalSize = headerSize + totalAudio
+  // Sort by original address to preserve original disk layout
+  audioOrder.sort((a, b) => {
+    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? 0
+    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? 0
+    return addrA - addrB
+  })
+
+  // Deduplicate audio blocks within each table
+  const { uniqueOrder, sharedWith } = deduplicateAudio(audioOrder)
+
+  let totalAudio = 0
+  for (const { table, slotIndex } of uniqueOrder) {
+    totalAudio += table.slots[slotIndex]!.audio.length
+  }
+
+  const gapSize = file.preAudioGap ? file.preAudioGap.length : 0
+
+  const totalSize = headerSize + gapSize + totalAudio
   const output = new Uint8Array(totalSize)
 
-  // Start with the decoded header template: XOR-decode the raw template
-  // so we can work with decoded bytes, then XOR-encode the entire output at the end
-  for (let i = 0; i < headerSize; i++) {
-    output[i] = xorEncodeByte(file.headerTemplate[i], i)
-    // headerTemplate stores the ORIGINAL raw bytes, so XOR-decoding gives decoded.
-    // Wait — headerTemplate for DS6 stores raw bytes from the original file.
-    // We XOR-decode to get the decoded form, modify it, then XOR-encode everything.
-  }
-  // Actually: let's decode the template first to get plain bytes
+  // Decode the raw header template to get plain bytes
   const decoded = new Uint8Array(headerSize)
   for (let i = 0; i < headerSize; i++) {
     decoded[i] = xorEncodeByte(file.headerTemplate[i], i)
@@ -299,15 +359,26 @@ function serializeDS6(file: SoundFile): Uint8Array {
   // Copy decoded header into output
   output.set(decoded)
 
+  // Write pre-audio gap if present (decoded bytes — will be XOR'd with the rest)
+  let writePos = headerSize
+  if (file.preAudioGap) {
+    output.set(file.preAudioGap, writePos)
+    writePos += file.preAudioGap.length
+  }
+
   // Lay out audio (decoded) and record addresses
   const addressMap = new Map<string, number>()
-  let writePos = headerSize
 
-  for (const { table, slotIndex } of audioOrder) {
+  for (const { table, slotIndex } of uniqueOrder) {
     const slot = table.slots[slotIndex]!
     addressMap.set(`${table.kind}:${slotIndex}`, writePos)
     output.set(slot.audio, writePos) // audio is already decoded in DS6
     writePos += slot.audio.length
+  }
+
+  // Point duplicate slots to their canonical block's address
+  for (const [dupKey, canonKey] of sharedWith) {
+    addressMap.set(dupKey, addressMap.get(canonKey)!)
   }
 
   // Write primary entries (decoded LE24)
@@ -356,10 +427,10 @@ function serializeDS6(file: SoundFile): Uint8Array {
         let addr = addressMap.get(key)
         if (addr === undefined) addr = findNextAddress(table, i, addressMap)
 
-        // B entry in pair: adjust for loop offset
+        // B entry in pair: compute from A address + loop offset
         if (i % 2 === 1) {
           const aSlot = table.slots[i - 1]
-          if (aSlot && aSlot.loopOffset > 0) {
+          if (aSlot) {
             const aAddr = addressMap.get(`${table.kind}:${i - 1}`)
             if (aAddr !== undefined) addr = aAddr + aSlot.loopOffset
           }

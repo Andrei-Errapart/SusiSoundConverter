@@ -14,6 +14,7 @@ export interface Track {
   table: TrackTableKind
   audio: Uint8Array
   loopOffset: number
+  originalAddress?: number
 }
 
 export interface TrackTable {
@@ -31,6 +32,7 @@ export interface SoundFile {
   config: Uint8Array
   soundName?: string
   headerTemplate: Uint8Array
+  preAudioGap?: Uint8Array
   flashSize: number
   dirty: boolean
 }

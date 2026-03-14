@@ -186,12 +186,13 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
   const primarySlots: (Track | null)[] = primaryAddrs.map((addr, i) => {
     if (addr === null) return null
     const info = audioMap.get(`primary:${i}`)
-    if (!info || info.size === 0) return { index: i, table: 'primary' as TrackTableKind, audio: new Uint8Array(0), loopOffset: 0 }
+    if (!info || info.size === 0) return { index: i, table: 'primary' as TrackTableKind, audio: new Uint8Array(0), loopOffset: 0, originalAddress: addr }
     return {
       index: i,
       table: 'primary' as TrackTableKind,
       audio: decodeAudioSlice(data, info.start, info.size),
       loopOffset: 0,
+      originalAddress: addr,
     }
   })
 
@@ -216,12 +217,13 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
           loopOffset = addrB - addr
         }
       }
-      if (!info || info.size === 0) return { index: i, table: 'middle' as TrackTableKind, audio: new Uint8Array(0), loopOffset }
+      if (!info || info.size === 0) return { index: i, table: 'middle' as TrackTableKind, audio: new Uint8Array(0), loopOffset, originalAddress: addr }
       return {
         index: i,
         table: 'middle' as TrackTableKind,
         audio: decodeAudioSlice(data, info.start, info.size),
         loopOffset,
+        originalAddress: addr,
       }
     })
 
@@ -245,12 +247,13 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
         loopOffset = addrB - addr
       }
     }
-    if (!info || info.size === 0) return { index: i, table: 'extended' as TrackTableKind, audio: new Uint8Array(0), loopOffset }
+    if (!info || info.size === 0) return { index: i, table: 'extended' as TrackTableKind, audio: new Uint8Array(0), loopOffset, originalAddress: addr }
     return {
       index: i,
       table: 'extended' as TrackTableKind,
       audio: decodeAudioSlice(data, info.start, info.size),
       loopOffset,
+      originalAddress: addr,
     }
   })
 
@@ -267,12 +270,13 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
     const dsuSlots: (Track | null)[] = dsuAddrs.map((addr, i) => {
       if (addr === null) return null
       const info = audioMap.get(`dsu:${i}`)
-      if (!info || info.size === 0) return { index: i, table: 'dsu' as TrackTableKind, audio: new Uint8Array(0), loopOffset: 0 }
+      if (!info || info.size === 0) return { index: i, table: 'dsu' as TrackTableKind, audio: new Uint8Array(0), loopOffset: 0, originalAddress: addr }
       return {
         index: i,
         table: 'dsu' as TrackTableKind,
         audio: data.slice(info.start, info.start + info.size), // DSU audio is raw (not XOR-encoded)
         loopOffset: 0,
+        originalAddress: addr,
       }
     })
 
@@ -285,12 +289,19 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
     })
   }
 
+  // Capture any gap between header end and first audio address
+  let preAudioGap: Uint8Array | undefined
+  if (sorted.length > 0 && sorted[0].address > DS3_HEADER_SIZE) {
+    preAudioGap = new Uint8Array(data.slice(DS3_HEADER_SIZE, sorted[0].address))
+  }
+
   return {
     filename,
     format,
     tables,
     config,
     headerTemplate,
+    preAudioGap,
     flashSize: FLASH_32MBIT,
     dirty: false,
   }
@@ -413,13 +424,14 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
         }
       }
       if (!info || info.size === 0) {
-        return { index: i, table: kind, audio: new Uint8Array(0), loopOffset }
+        return { index: i, table: kind, audio: new Uint8Array(0), loopOffset, originalAddress: addr }
       }
       return {
         index: i,
         table: kind,
         audio: decoded.slice(info.start, info.start + info.size),
         loopOffset,
+        originalAddress: addr,
       }
     })
   }
@@ -456,6 +468,12 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
     slots: buildSlots(ext3Addrs, 'ds6_ext3'),
   })
 
+  // Capture any gap between header end and first audio address
+  let preAudioGap: Uint8Array | undefined
+  if (sorted.length > 0 && sorted[0].address > DS6_HEADER_SIZE) {
+    preAudioGap = new Uint8Array(decoded.slice(DS6_HEADER_SIZE, sorted[0].address))
+  }
+
   return {
     filename,
     format: 'DS6',
@@ -463,6 +481,7 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
     config,
     soundName,
     headerTemplate,
+    preAudioGap,
     flashSize: FLASH_64MBIT,
     dirty: false,
   }
