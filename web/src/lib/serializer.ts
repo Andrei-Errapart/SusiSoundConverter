@@ -107,8 +107,8 @@ function serializeDS3Family(file: SoundFile): Uint8Array {
 
   // Sort by original address to preserve original disk layout
   audioOrder.sort((a, b) => {
-    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? 0
-    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? 0
+    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? Infinity
+    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? Infinity
     return addrA - addrB
   })
 
@@ -332,8 +332,8 @@ function serializeDS6(file: SoundFile): Uint8Array {
 
   // Sort by original address to preserve original disk layout
   audioOrder.sort((a, b) => {
-    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? 0
-    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? 0
+    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? Infinity
+    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? Infinity
     return addrA - addrB
   })
 
