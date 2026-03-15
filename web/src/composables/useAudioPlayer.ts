@@ -6,7 +6,14 @@ const isPlaying = ref(false)
 const currentTrackKey = ref<string | null>(null)
 
 export function useAudioPlayer() {
-  function play(audio: Uint8Array, side: string, tableKind: TrackTableKind, index: number): void {
+  function play(
+    audio: Uint8Array,
+    side: string,
+    tableKind: TrackTableKind,
+    index: number,
+    sampleRate: number,
+    bitDepth: number,
+  ): void {
     const key = `${side}:${tableKind}:${index}`
 
     // If clicking the same track, stop it
@@ -18,7 +25,7 @@ export function useAudioPlayer() {
     isPlaying.value = true
     currentTrackKey.value = key
 
-    playTrack(audio, () => {
+    playTrack(audio, sampleRate, bitDepth, () => {
       if (currentTrackKey.value === key) {
         isPlaying.value = false
         currentTrackKey.value = null

@@ -36,9 +36,20 @@ export const DS6_EXT3_COUNT = 16 // 8 pairs
 export const DS6_NAME_OFF = 0x526
 export const DS6_NAME_LEN = 16
 
+// DHE (X-clusive PROFI / Profi Soundbox)
+export const DHE_HEADER_SIZE = 0x2000
+export const DHE_NAME_OFF = 0x02C
+export const DHE_NAME_LEN = 16
+export const DHE_META_OFF = 0x004
+export const DHE_TABLE_OFF = 0x0800
+export const DHE_TABLE_END = 0x2000
+export const DHE_RECORD_SIZE = 11
+
 // Flash capacity
 export const FLASH_32MBIT = 4 * 1024 * 1024 // 4,194,304
 export const FLASH_64MBIT = 8 * 1024 * 1024 // 8,388,608
+export const FLASH_128MBIT = 16 * 1024 * 1024 // 16,777,216
 
 // Audio
 export const SAMPLE_RATE = 13021
+export const DHE_SAMPLE_RATE = 22050

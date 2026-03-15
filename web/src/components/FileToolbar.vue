@@ -34,7 +34,7 @@ function onFileSelected(e: Event) {
     <input
       ref="fileInput"
       type="file"
-      accept=".ds3,.ds4,.dsu,.dx4,.ds6,.dsd,.zip"
+      accept=".ds3,.DS3,.ds4,.DS4,.dsu,.DSU,.dx4,.DX4,.ds6,.DS6,.dsd,.DSD,.dhe,.DHE,.zip,.ZIP"
       style="display:none"
       @change="onFileSelected"
     />

@@ -1,4 +1,4 @@
-import type { SoundFile, SoundFormat, Track, TrackTable, TrackTableKind } from '../types/sound-file'
+import type { SoundFile, SoundFormat, Track, TrackTable, TrackTableKind, DheRecord } from '../types/sound-file'
 import {
   DS3_HEADER_SIZE, DS6_HEADER_SIZE,
   PRIMARY_OFF, PRIMARY_COUNT,
@@ -12,6 +12,8 @@ import {
   DS6_EXT3_OFF, DS6_EXT3_COUNT,
   DS6_NAME_OFF, DS6_NAME_LEN,
   FLASH_32MBIT, FLASH_64MBIT,
+  DHE_HEADER_SIZE, DHE_NAME_OFF, DHE_NAME_LEN, DHE_TABLE_OFF, DHE_TABLE_END,
+  DHE_RECORD_SIZE, DHE_SAMPLE_RATE, FLASH_128MBIT, SAMPLE_RATE,
 } from './constants'
 import { xorDecodeAddress, xorDecodeByte, readLE24, xorDecodeBuffer } from './xor'
 import { isUnused } from './track-utils'
@@ -39,6 +41,15 @@ function decodeAudioSlice(data: Uint8Array, start: number, size: number): Uint8A
 }
 
 export function parseFile(data: Uint8Array, filename: string): SoundFile {
+  if (data.length < 4) {
+    throw new ParseError(`File too small (${data.length} bytes)`)
+  }
+
+  // Check DHE magic: 0x22 0x57
+  if (data[0] === 0x22 && data[1] === 0x57) {
+    return parseDHE(data, filename)
+  }
+
   if (data.length < DS3_HEADER_SIZE) {
     throw new ParseError(`File too small (${data.length} bytes, need at least ${DS3_HEADER_SIZE})`)
   }
@@ -304,6 +315,8 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
     headerTemplate,
     preAudioGap,
     flashSize: FLASH_32MBIT,
+    sampleRate: SAMPLE_RATE,
+    bitDepth: 8,
     dirty: false,
   }
 }
@@ -484,6 +497,136 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
     headerTemplate,
     preAudioGap,
     flashSize: FLASH_64MBIT,
+    sampleRate: SAMPLE_RATE,
+    bitDepth: 8,
+    dirty: false,
+  }
+}
+
+function parseDHE(data: Uint8Array, filename: string): SoundFile {
+  if (data.length < DHE_HEADER_SIZE) {
+    throw new ParseError(`DHE file too small (${data.length} bytes, need at least ${DHE_HEADER_SIZE})`)
+  }
+
+  // XOR-decode entire file
+  const decoded = new Uint8Array(data.length)
+  for (let i = 0; i < data.length; i++) {
+    decoded[i] = data[i] ^ (i & 0xFF)
+  }
+
+  const headerTemplate = new Uint8Array(data.slice(0, DHE_HEADER_SIZE))
+
+  // Read embedded sound name
+  const nameBytes = decoded.subarray(DHE_NAME_OFF, DHE_NAME_OFF + DHE_NAME_LEN)
+  let soundName = ''
+  for (let i = 0; i < DHE_NAME_LEN; i++) {
+    if (nameBytes[i] === 0) break
+    soundName += String.fromCharCode(nameBytes[i])
+  }
+  soundName = soundName.trimEnd()
+
+  // Parse 11-byte records at 0x800
+  const maxRecords = Math.floor((DHE_TABLE_END - DHE_TABLE_OFF) / DHE_RECORD_SIZE)
+  const dheRecords: DheRecord[] = []
+
+  for (let i = 0; i < maxRecords; i++) {
+    const off = DHE_TABLE_OFF + i * DHE_RECORD_SIZE
+    if (off + DHE_RECORD_SIZE > Math.min(DHE_TABLE_END, data.length)) break
+
+    // Check if all raw bytes are FF (padding — end of table)
+    let allFF = true
+    for (let j = 0; j < DHE_RECORD_SIZE; j++) {
+      if (data[off + j] !== 0xFF) { allFF = false; break }
+    }
+    if (allFF) break
+
+    // Read from decoded buffer (plain LE24 after XOR decode)
+    const addrA = decoded[off] | (decoded[off + 1] << 8) | (decoded[off + 2] << 16)
+    const addrB = decoded[off + 3] | (decoded[off + 4] << 8) | (decoded[off + 5] << 16)
+    const addrC = decoded[off + 6] | (decoded[off + 7] << 8) | (decoded[off + 8] << 16)
+    const flag1 = decoded[off + 9]
+    const flag2 = decoded[off + 10]
+
+    dheRecords.push({ addrA, addrB, addrC, flag1, flag2 })
+  }
+
+  // Build sorted list of unique A addresses in audio range
+  const uniqueAddrs = new Set<number>()
+  for (const rec of dheRecords) {
+    if (rec.addrA >= DHE_HEADER_SIZE && rec.addrA < data.length) {
+      uniqueAddrs.add(rec.addrA)
+    }
+  }
+  const sorted = [...uniqueAddrs].sort((a, b) => a - b)
+
+  // Compute sizes from sorted addresses
+  const sizeMap = new Map<number, number>()
+  for (let i = 0; i < sorted.length; i++) {
+    const next = i + 1 < sorted.length ? sorted[i + 1] : data.length
+    sizeMap.set(sorted[i], next - sorted[i])
+  }
+
+  // Create Track objects for each record
+  const slots: (Track | null)[] = dheRecords.map((rec, i) => {
+    const addr = rec.addrA
+    const size = sizeMap.get(addr)
+    if (!size || size <= 0 || addr < DHE_HEADER_SIZE) return null
+
+    // Extract audio: decoded bytes, then convert unsigned 16-bit to signed
+    // by flipping MSB of every high byte (odd index in LE16)
+    const audioBytes = new Uint8Array(size)
+    for (let j = 0; j < size; j++) {
+      let b = decoded[addr + j]
+      if (j % 2 === 1) b ^= 0x80
+      audioBytes[j] = b
+    }
+
+    // Compute loop offset (B - A) if B is a valid audio address
+    let loopOffset = 0
+    if (rec.addrB !== rec.addrA && rec.addrB >= DHE_HEADER_SIZE) {
+      loopOffset = rec.addrB - rec.addrA
+    }
+
+    return {
+      index: i,
+      table: 'dhe_tracks' as TrackTableKind,
+      audio: audioBytes,
+      loopOffset,
+      originalAddress: addr,
+    }
+  })
+
+  const realCount = slots.filter(s => s !== null).length
+
+  // DHE config: empty (DHE uses different config structure from DS3)
+  const config = new Uint8Array(0)
+
+  // Pre-audio gap
+  let preAudioGap: Uint8Array | undefined
+  if (sorted.length > 0 && sorted[0] > DHE_HEADER_SIZE) {
+    preAudioGap = new Uint8Array(decoded.slice(DHE_HEADER_SIZE, sorted[0]))
+  }
+
+  const tables: TrackTable[] = [{
+    kind: 'dhe_tracks',
+    label: `Tracks (${realCount} sounds)`,
+    entryCount: dheRecords.length,
+    isPaired: false,
+    slots,
+  }]
+
+  return {
+    filename,
+    format: 'DHE',
+    tables,
+    config,
+    soundName,
+    headerTemplate,
+    preAudioGap,
+    flashSize: FLASH_128MBIT,
+    sampleRate: DHE_SAMPLE_RATE,
+    bitDepth: 16,
+    dheRecords,
     dirty: false,
   }
 }

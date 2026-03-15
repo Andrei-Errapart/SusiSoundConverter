@@ -2,7 +2,7 @@
 import type { PaneSide } from '../composables/useCopyPaste'
 import { useSoundFile } from '../composables/useSoundFile'
 import { useCopyPaste } from '../composables/useCopyPaste'
-import { importWav, importAudioFile } from '../lib/wav-import'
+import { importWav, importAudioFile, convertTrackAudio } from '../lib/wav-import'
 import { fetchSoundUrl } from '../lib/url-fetch'
 import { ParseError } from '../lib/parser'
 import FileToolbar from './FileToolbar.vue'
@@ -145,10 +145,20 @@ function handleOverwrite(tableKind: string, targetIndex: number) {
   if (!table) return
 
   const source = selected.value.track
+  const srcRate = selected.value.sampleRate
+  const srcBitDepth = selected.value.bitDepth
+  const dstRate = file.value.sampleRate
+  const dstBitDepth = file.value.bitDepth
+
+  // Convert audio if source and destination formats differ
+  const audio = (srcRate !== dstRate || srcBitDepth !== dstBitDepth)
+    ? convertTrackAudio(source.audio, srcRate, srcBitDepth, dstRate, dstBitDepth)
+    : new Uint8Array(source.audio)
+
   const newTrack = {
     index: targetIndex,
     table: table.kind,
-    audio: new Uint8Array(source.audio),
+    audio,
     loopOffset: source.loopOffset,
   }
 
@@ -166,7 +176,11 @@ async function handleImportWav(tableKind: string, targetIndex: number, wavFile: 
   try {
     const buffer = await wavFile.arrayBuffer()
     const isWav = wavFile.name.toLowerCase().endsWith('.wav')
-    const audio = isWav ? importWav(buffer) : await importAudioFile(buffer)
+    const targetRate = file.value.sampleRate
+    const targetBitDepth = file.value.bitDepth
+    const audio = isWav
+      ? importWav(buffer, targetRate, targetBitDepth)
+      : await importAudioFile(buffer, targetRate, targetBitDepth)
 
     table.slots[targetIndex] = {
       index: targetIndex,
@@ -176,7 +190,7 @@ async function handleImportWav(tableKind: string, targetIndex: number, wavFile: 
     }
     file.value.dirty = true
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to import WAV file'
+    error.value = e instanceof Error ? e.message : 'Failed to import audio file'
   }
 }
 
@@ -200,12 +214,14 @@ defineExpose({ file, handlePasteFile })
         :key="table.kind"
         :table="table"
         :side="side"
+        :sample-rate="file.sampleRate"
+        :bit-depth="file.bitDepth"
         @overwrite="handleOverwrite"
         @import-wav="handleImportWav"
       />
     </template>
     <div v-else class="empty-pane">
-      <p>Load a sound file (.DSD, .DS3, .DX4, .DSU, .DS6, .ZIP)</p>
+      <p>Load a sound file (.DSD, .DS3, .DX4, .DSU, .DS6, .DHE, .ZIP)</p>
     </div>
   </div>
 </template>

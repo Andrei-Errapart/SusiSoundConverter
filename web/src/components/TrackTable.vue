@@ -6,6 +6,8 @@ import TrackRow from './TrackRow.vue'
 const props = defineProps<{
   table: TrackTableType
   side: PaneSide
+  sampleRate: number
+  bitDepth: number
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +24,7 @@ function handleImportWav(index: number, file: File) {
 }
 
 // For paired tables, only show the A entries (even indices).
+// For DHE, hide sentinel slots (null entries with audio size <= 2).
 function visibleSlots(): { track: typeof props.table.slots[number]; index: number }[] {
   if (props.table.isPaired) {
     const result = []
@@ -29,6 +32,11 @@ function visibleSlots(): { track: typeof props.table.slots[number]; index: numbe
       result.push({ track: props.table.slots[i], index: i })
     }
     return result
+  }
+  if (props.table.kind === 'dhe_tracks') {
+    return props.table.slots
+      .map((track, index) => ({ track, index }))
+      .filter(({ track }) => track !== null)
   }
   return props.table.slots.map((track, index) => ({ track, index }))
 }
@@ -43,13 +51,19 @@ function usedCount(): number {
   }
   return props.table.slots.filter(s => s !== null).length
 }
+
+function displayEntryCount(): number {
+  if (props.table.isPaired) return props.table.entryCount / 2
+  if (props.table.kind === 'dhe_tracks') return usedCount() // for DHE just show used count
+  return props.table.entryCount
+}
 </script>
 
 <template>
   <div class="track-table">
     <div class="table-header">
       <strong>{{ table.label }}</strong>
-      <span class="used-count">{{ usedCount() }} / {{ table.isPaired ? table.entryCount / 2 : table.entryCount }} used</span>
+      <span class="used-count">{{ usedCount() }} / {{ displayEntryCount() }} used</span>
     </div>
     <table>
       <thead>
@@ -71,6 +85,8 @@ function usedCount(): number {
           :table-kind="table.kind"
           :is-paired="table.isPaired"
           :side="side"
+          :sample-rate="sampleRate"
+          :bit-depth="bitDepth"
           @overwrite="handleOverwrite"
           @import-wav="handleImportWav"
         />

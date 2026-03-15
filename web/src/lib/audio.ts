@@ -1,11 +1,9 @@
-import { SAMPLE_RATE } from './constants'
-
 let audioCtx: AudioContext | null = null
 let currentSource: AudioBufferSourceNode | null = null
 
 function getContext(): AudioContext {
   if (!audioCtx) {
-    audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE })
+    audioCtx = new AudioContext()
   }
   return audioCtx
 }
@@ -19,9 +17,16 @@ export function stopPlayback(): void {
 }
 
 /**
- * Play 8-bit unsigned PCM audio at 13,021 Hz.
+ * Play PCM audio.
+ * For 8-bit: unsigned PCM (silence = 0x80), 1 byte per sample.
+ * For 16-bit: signed LE PCM, 2 bytes per sample.
  */
-export function playTrack(audio: Uint8Array, onEnded?: () => void): void {
+export function playTrack(
+  audio: Uint8Array,
+  sampleRate: number,
+  bitDepth: number,
+  onEnded?: () => void,
+): void {
   stopPlayback()
 
   const ctx = getContext()
@@ -29,12 +34,21 @@ export function playTrack(audio: Uint8Array, onEnded?: () => void): void {
     ctx.resume()
   }
 
-  const buffer = ctx.createBuffer(1, audio.length, SAMPLE_RATE)
+  const sampleCount = bitDepth === 16 ? Math.floor(audio.length / 2) : audio.length
+  if (sampleCount === 0) return
+
+  const buffer = ctx.createBuffer(1, sampleCount, sampleRate)
   const channel = buffer.getChannelData(0)
 
-  // Convert 8-bit unsigned to float32: (byte - 128) / 128
-  for (let i = 0; i < audio.length; i++) {
-    channel[i] = (audio[i] - 128) / 128
+  if (bitDepth === 16) {
+    const view = new DataView(audio.buffer, audio.byteOffset, audio.byteLength)
+    for (let i = 0; i < sampleCount; i++) {
+      channel[i] = view.getInt16(i * 2, true) / 32768
+    }
+  } else {
+    for (let i = 0; i < sampleCount; i++) {
+      channel[i] = (audio[i] - 128) / 128
+    }
   }
 
   const source = ctx.createBufferSource()

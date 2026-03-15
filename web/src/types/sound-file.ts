@@ -1,4 +1,4 @@
-export type SoundFormat = 'DSD' | 'DS3' | 'DX4' | 'DSU' | 'DS6'
+export type SoundFormat = 'DSD' | 'DS3' | 'DX4' | 'DSU' | 'DS6' | 'DHE'
 
 export type TrackTableKind =
   | 'primary'
@@ -8,6 +8,7 @@ export type TrackTableKind =
   | 'ds6_ext1'
   | 'ds6_ext2'
   | 'ds6_ext3'
+  | 'dhe_tracks'
 
 export interface Track {
   index: number
@@ -15,6 +16,14 @@ export interface Track {
   audio: Uint8Array
   loopOffset: number
   originalAddress?: number
+}
+
+export interface DheRecord {
+  addrA: number
+  addrB: number
+  addrC: number
+  flag1: number
+  flag2: number
 }
 
 export interface TrackTable {
@@ -34,5 +43,8 @@ export interface SoundFile {
   headerTemplate: Uint8Array
   preAudioGap?: Uint8Array
   flashSize: number
+  sampleRate: number
+  bitDepth: number
+  dheRecords?: DheRecord[]
   dirty: boolean
 }

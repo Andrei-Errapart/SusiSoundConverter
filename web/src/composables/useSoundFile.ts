@@ -17,7 +17,8 @@ export function useSoundFile() {
 
   const flashUsed = computed(() => {
     if (!file.value) return 0
-    const headerSize = file.value.format === 'DS6' ? 0x627 : 0x300
+    const headerSize = file.value.format === 'DHE' ? 0x2000
+      : file.value.format === 'DS6' ? 0x627 : 0x300
     return headerSize + totalAudioBytes.value
   })
 

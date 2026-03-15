@@ -12,6 +12,8 @@ const props = defineProps<{
   tableKind: TrackTableKind
   isPaired: boolean
   side: PaneSide
+  sampleRate: number
+  bitDepth: number
 }>()
 
 const emit = defineEmits<{
@@ -26,13 +28,13 @@ const { selected, selectTrack, isSelected, hasSelection } = useCopyPaste()
 
 function handleClick() {
   if (!props.track || props.track.audio.length === 0) return
-  selectTrack(props.track, props.side, props.tableKind, props.index)
+  selectTrack(props.track, props.side, props.tableKind, props.index, props.sampleRate, props.bitDepth)
 }
 
 function handlePlay(e: Event) {
   e.stopPropagation()
   if (props.track && props.track.audio.length > 0) {
-    play(props.track.audio, props.side, props.tableKind, props.index)
+    play(props.track.audio, props.side, props.tableKind, props.index, props.sampleRate, props.bitDepth)
   }
 }
 
@@ -90,7 +92,7 @@ function displayIndex(): string {
     </td>
     <td class="col-duration">
       <template v-if="track && track.audio.length > 0">
-        {{ formatDuration(track.audio.length) }}
+        {{ formatDuration(track.audio.length, sampleRate, bitDepth === 16 ? 2 : 1) }}
       </template>
       <template v-else>&mdash;</template>
     </td>

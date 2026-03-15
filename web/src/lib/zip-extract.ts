@@ -1,6 +1,6 @@
 import { unzipSync } from 'fflate'
 
-const SOUND_EXTENSIONS = /\.(dsd|ds3|ds4|dsu|dx4|ds6)$/i
+const SOUND_EXTENSIONS = /\.(dsd|ds3|ds4|dsu|dx4|ds6|dhe)$/i
 
 /**
  * If the file is a ZIP containing exactly one sound file, extract and return it.

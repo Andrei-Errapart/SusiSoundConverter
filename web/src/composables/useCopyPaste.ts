@@ -8,12 +8,21 @@ export interface SelectedTrack {
   side: PaneSide
   tableKind: TrackTableKind
   slotIndex: number
+  sampleRate: number
+  bitDepth: number
 }
 
 const selected = ref<SelectedTrack | null>(null)
 
 export function useCopyPaste() {
-  function selectTrack(track: Track, side: PaneSide, tableKind: TrackTableKind, slotIndex: number): void {
+  function selectTrack(
+    track: Track,
+    side: PaneSide,
+    tableKind: TrackTableKind,
+    slotIndex: number,
+    sampleRate: number,
+    bitDepth: number,
+  ): void {
     // Toggle off if clicking the same track
     if (
       selected.value &&
@@ -25,7 +34,7 @@ export function useCopyPaste() {
       return
     }
 
-    selected.value = { track, side, tableKind, slotIndex }
+    selected.value = { track, side, tableKind, slotIndex, sampleRate, bitDepth }
   }
 
   function clearSelection(): void {

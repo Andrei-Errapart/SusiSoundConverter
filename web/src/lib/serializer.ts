@@ -1,6 +1,6 @@
 import type { SoundFile, TrackTable } from '../types/sound-file'
 import {
-  DS3_HEADER_SIZE, DS6_HEADER_SIZE,
+  DS3_HEADER_SIZE, DS6_HEADER_SIZE, DHE_HEADER_SIZE,
   PRIMARY_OFF, PRIMARY_COUNT,
   MIDDLE_OFF, MIDDLE_COUNT,
   DSU_PTR_OFF, DSU_SLOT_COUNT,
@@ -11,6 +11,7 @@ import {
   DS6_EXT2_OFF, DS6_EXT2_COUNT,
   DS6_EXT3_OFF, DS6_EXT3_COUNT,
   DS6_NAME_OFF, DS6_NAME_LEN,
+  DHE_TABLE_OFF, DHE_RECORD_SIZE,
 } from './constants'
 import { xorEncodeAddress, xorEncodeByte, writeLE24 } from './xor'
 
@@ -22,9 +23,8 @@ export class SerializeError extends Error {
 }
 
 export function serializeFile(file: SoundFile): Uint8Array {
-  if (file.format === 'DS6') {
-    return serializeDS6(file)
-  }
+  if (file.format === 'DS6') return serializeDS6(file)
+  if (file.format === 'DHE') return serializeDHE(file)
   return serializeDS3Family(file)
 }
 
@@ -464,6 +464,136 @@ function serializeDS6(file: SoundFile): Uint8Array {
   }
 
   // XOR-encode the ENTIRE output (header + audio)
+  for (let i = 0; i < output.length; i++) {
+    output[i] = output[i] ^ (i & 0xFF)
+  }
+
+  return output
+}
+
+function serializeDHE(file: SoundFile): Uint8Array {
+  const headerSize = DHE_HEADER_SIZE
+  const dheTable = file.tables.find(t => t.kind === 'dhe_tracks')
+
+  // Collect non-null slots with audio
+  const audioOrder: AudioEntry[] = []
+  if (dheTable) {
+    for (let i = 0; i < dheTable.slots.length; i++) {
+      const slot = dheTable.slots[i]
+      if (slot && slot.audio.length > 0) {
+        audioOrder.push({ table: dheTable, slotIndex: i })
+      }
+    }
+  }
+
+  // Sort by original address to preserve original disk layout
+  audioOrder.sort((a, b) => {
+    const addrA = a.table.slots[a.slotIndex]!.originalAddress ?? Infinity
+    const addrB = b.table.slots[b.slotIndex]!.originalAddress ?? Infinity
+    return addrA - addrB
+  })
+
+  // Deduplicate audio blocks
+  const { uniqueOrder, sharedWith } = deduplicateAudio(audioOrder)
+
+  let totalAudio = 0
+  for (const { table, slotIndex } of uniqueOrder) {
+    totalAudio += table.slots[slotIndex]!.audio.length
+  }
+
+  const gap = !file.dirty ? file.preAudioGap : undefined
+  const gapSize = gap ? gap.length : 0
+
+  const totalSize = headerSize + gapSize + totalAudio
+  const output = new Uint8Array(totalSize)
+
+  // Decode the raw header template to get plain bytes
+  const decodedHeader = new Uint8Array(headerSize)
+  for (let i = 0; i < headerSize; i++) {
+    decodedHeader[i] = file.headerTemplate[i] ^ (i & 0xFF)
+  }
+  output.set(decodedHeader)
+
+  // Write gap (decoded space)
+  let writePos = headerSize
+  if (gap) {
+    output.set(gap, writePos)
+    writePos += gap.length
+  }
+
+  // Write audio: convert signed 16-bit back to unsigned (flip MSB of high bytes)
+  const addressMap = new Map<string, number>()
+
+  for (const { table, slotIndex } of uniqueOrder) {
+    const slot = table.slots[slotIndex]!
+    addressMap.set(`${table.kind}:${slotIndex}`, writePos)
+
+    for (let j = 0; j < slot.audio.length; j++) {
+      let b = slot.audio[j]
+      if (j % 2 === 1) b ^= 0x80 // signed → unsigned
+      output[writePos + j] = b
+    }
+    writePos += slot.audio.length
+  }
+
+  // Point duplicates
+  for (const [dupKey, canonKey] of sharedWith) {
+    addressMap.set(dupKey, addressMap.get(canonKey)!)
+  }
+
+  // Rewrite record table addresses
+  if (file.dheRecords && dheTable) {
+    // Build map from original address to new address
+    const origToNew = new Map<number, { newAddr: number; audioLen: number }>()
+    for (let i = 0; i < dheTable.slots.length; i++) {
+      const slot = dheTable.slots[i]
+      if (!slot) continue
+      const key = `dhe_tracks:${i}`
+      const newAddr = addressMap.get(key)
+      if (newAddr !== undefined && slot.originalAddress !== undefined) {
+        origToNew.set(slot.originalAddress, { newAddr, audioLen: slot.audio.length })
+      }
+    }
+
+    for (let i = 0; i < file.dheRecords.length; i++) {
+      const rec = file.dheRecords[i]
+      const off = DHE_TABLE_OFF + i * DHE_RECORD_SIZE
+
+      let newA: number
+      const mapped = origToNew.get(rec.addrA)
+      if (mapped !== undefined) {
+        newA = mapped.newAddr
+      } else {
+        // Sentinel: find the previous real track and place after its audio
+        newA = rec.addrA // fallback
+        for (let j = i - 1; j >= 0; j--) {
+          const prev = origToNew.get(file.dheRecords[j].addrA)
+          if (prev !== undefined) {
+            newA = prev.newAddr + prev.audioLen
+            break
+          }
+        }
+      }
+
+      const delta = newA - rec.addrA
+      const newB = rec.addrB + delta
+      const newC = rec.addrC + delta
+
+      // Write LE24 addresses in decoded space
+      output[off] = newA & 0xFF
+      output[off + 1] = (newA >> 8) & 0xFF
+      output[off + 2] = (newA >> 16) & 0xFF
+      output[off + 3] = newB & 0xFF
+      output[off + 4] = (newB >> 8) & 0xFF
+      output[off + 5] = (newB >> 16) & 0xFF
+      output[off + 6] = newC & 0xFF
+      output[off + 7] = (newC >> 8) & 0xFF
+      output[off + 8] = (newC >> 16) & 0xFF
+      // flags (bytes 9-10) preserved from decoded header
+    }
+  }
+
+  // XOR-encode entire output
   for (let i = 0; i < output.length; i++) {
     output[i] = output[i] ^ (i & 0xFF)
   }

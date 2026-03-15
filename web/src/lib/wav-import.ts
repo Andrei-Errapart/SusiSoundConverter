@@ -1,15 +1,21 @@
 import { SAMPLE_RATE } from './constants'
 
 /**
- * Resample Float32 mono audio to SAMPLE_RATE, then convert to 8-bit unsigned PCM.
+ * Resample Float32 mono audio to targetRate, then convert to target bit depth.
+ * Returns Uint8Array: for 8-bit unsigned PCM, or 16-bit signed LE PCM.
  */
-function floatMonoToUint8(mono: Float32Array, srcRate: number): Uint8Array {
-  // Resample to 13,021 Hz
+function floatMonoToTarget(
+  mono: Float32Array,
+  srcRate: number,
+  targetRate: number,
+  targetBitDepth: number,
+): Uint8Array {
+  // Resample
   let resampled: Float32Array
-  if (srcRate === SAMPLE_RATE) {
+  if (srcRate === targetRate) {
     resampled = mono
   } else {
-    const ratio = srcRate / SAMPLE_RATE
+    const ratio = srcRate / targetRate
     const outLen = Math.round(mono.length / ratio)
     resampled = new Float32Array(outLen)
     for (let i = 0; i < outLen; i++) {
@@ -21,19 +27,36 @@ function floatMonoToUint8(mono: Float32Array, srcRate: number): Uint8Array {
     }
   }
 
-  // Convert to 8-bit unsigned
-  const result = new Uint8Array(resampled.length)
-  for (let i = 0; i < resampled.length; i++) {
-    const clamped = Math.max(-1, Math.min(1, resampled[i]))
-    result[i] = Math.max(0, Math.min(255, Math.round(clamped * 128 + 128)))
+  if (targetBitDepth === 16) {
+    // 16-bit signed LE
+    const result = new Uint8Array(resampled.length * 2)
+    const view = new DataView(result.buffer)
+    for (let i = 0; i < resampled.length; i++) {
+      const clamped = Math.max(-1, Math.min(1, resampled[i]))
+      const sample = Math.max(-32768, Math.min(32767, Math.round(clamped * 32768)))
+      view.setInt16(i * 2, sample, true)
+    }
+    return result
+  } else {
+    // 8-bit unsigned
+    const result = new Uint8Array(resampled.length)
+    for (let i = 0; i < resampled.length; i++) {
+      const clamped = Math.max(-1, Math.min(1, resampled[i]))
+      result[i] = Math.max(0, Math.min(255, Math.round(clamped * 128 + 128)))
+    }
+    return result
   }
-  return result
 }
 
 /**
- * Parse a WAV file and convert to 8-bit unsigned mono PCM at 13,021 Hz.
+ * Parse a WAV file and convert to target format PCM.
+ * Default: 8-bit unsigned mono at 13,021 Hz.
  */
-export function importWav(buffer: ArrayBuffer): Uint8Array {
+export function importWav(
+  buffer: ArrayBuffer,
+  targetRate: number = SAMPLE_RATE,
+  targetBitDepth: number = 8,
+): Uint8Array {
   const view = new DataView(buffer)
 
   // --- Parse WAV header ---
@@ -86,7 +109,7 @@ export function importWav(buffer: ArrayBuffer): Uint8Array {
   }
 
   // Already in target format — return raw data directly
-  if (sampleRate === SAMPLE_RATE && bitsPerSample === 8 && numChannels === 1) {
+  if (sampleRate === targetRate && bitsPerSample === targetBitDepth && numChannels === 1) {
     return new Uint8Array(buffer, dataOffset, dataSize)
   }
 
@@ -116,15 +139,20 @@ export function importWav(buffer: ArrayBuffer): Uint8Array {
     mono[i] = sum / numChannels
   }
 
-  return floatMonoToUint8(mono, sampleRate)
+  return floatMonoToTarget(mono, sampleRate, targetRate, targetBitDepth)
 }
 
 /**
  * Import any browser-supported audio format (MP3, OGG, FLAC, WAV, etc.)
- * using the Web Audio API, and convert to 8-bit unsigned mono PCM at 13,021 Hz.
+ * using the Web Audio API, and convert to target format PCM.
+ * Default: 8-bit unsigned mono at 13,021 Hz.
  */
-export async function importAudioFile(buffer: ArrayBuffer): Promise<Uint8Array> {
-  const ctx = new OfflineAudioContext(1, 1, SAMPLE_RATE)
+export async function importAudioFile(
+  buffer: ArrayBuffer,
+  targetRate: number = SAMPLE_RATE,
+  targetBitDepth: number = 8,
+): Promise<Uint8Array> {
+  const ctx = new OfflineAudioContext(1, 1, targetRate)
   const audioBuffer = await ctx.decodeAudioData(buffer)
 
   // Mix down to mono
@@ -143,5 +171,39 @@ export async function importAudioFile(buffer: ArrayBuffer): Promise<Uint8Array> 
     }
   }
 
-  return floatMonoToUint8(mono, audioBuffer.sampleRate)
+  return floatMonoToTarget(mono, audioBuffer.sampleRate, targetRate, targetBitDepth)
+}
+
+/**
+ * Convert audio data between formats (for cross-format track copying).
+ * srcAudio bytes: 8-bit unsigned PCM or 16-bit signed LE PCM.
+ */
+export function convertTrackAudio(
+  srcAudio: Uint8Array,
+  srcRate: number,
+  srcBitDepth: number,
+  dstRate: number,
+  dstBitDepth: number,
+): Uint8Array {
+  if (srcRate === dstRate && srcBitDepth === dstBitDepth) {
+    return new Uint8Array(srcAudio) // copy
+  }
+
+  // Decode source to float32 mono
+  let mono: Float32Array
+  if (srcBitDepth === 16) {
+    const view = new DataView(srcAudio.buffer, srcAudio.byteOffset, srcAudio.byteLength)
+    const sampleCount = Math.floor(srcAudio.length / 2)
+    mono = new Float32Array(sampleCount)
+    for (let i = 0; i < sampleCount; i++) {
+      mono[i] = view.getInt16(i * 2, true) / 32768
+    }
+  } else {
+    mono = new Float32Array(srcAudio.length)
+    for (let i = 0; i < srcAudio.length; i++) {
+      mono[i] = (srcAudio[i] - 128) / 128
+    }
+  }
+
+  return floatMonoToTarget(mono, srcRate, dstRate, dstBitDepth)
 }
