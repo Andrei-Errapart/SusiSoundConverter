@@ -1,0 +1,10 @@
+[WAVs]
+DSDfilename=DL-UNI1.DS3
+Sound1AnfWAV=200a-bimstart.wav
+Sound1LoopWAV=200l-bimloop.wav
+Sound2AnfWAV=201a-ansage.wav
+Sound3AnfWAV=202a-kupplung.wav
+Sound3EndWAV=202e-kupplung.wav
+Sound4AnfWAV=203a-pfeife.wav
+Sound4LoopWAV=203l-pfeife.wav
+Sound4EndWAV=203e-pfeife.wav

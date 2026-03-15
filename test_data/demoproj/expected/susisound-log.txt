@@ -1,0 +1,16 @@
+SUSIsound-Version:  V1.01.0001
+WAV  1: 200a-bimstart.wav:
+WAV  2: 200l-bimloop.wav:
+WAV  3: :
+WAV  4: 201a-ansage.wav:
+WAV  5: :
+WAV  6: :
+WAV  7: 202a-kupplung.wav:
+WAV  8: :
+WAV  9: 202e-kupplung.wav:
+WAV  10: 203a-pfeife.wav:
+WAV  11: 203l-pfeife.wav:
+WAV  12: 203e-pfeife.wav:
+benötigte Bytes: 779615
+FLASH 32Mbit: 3414689 frei
+Ergebnis = OK

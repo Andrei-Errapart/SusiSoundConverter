@@ -1,0 +1,13 @@
+# Files
+- 200a-bimstart.wav
+- 200l-bimloop.wav
+- 201a-ansage.wav
+- 202a-kupplung.wav
+- 202e-kupplung.wav
+- 203a-pfeife.wav
+- 203e-pfeife.wav
+- 203l-pfeife.wav
+- demoproj.dsp - Project file, listing all sound files that make up one DSU file.
+- DL-UNI1.DS3 - Base file
+- expected/demoproj.DSU - Expected output file
+- expected/susisound-log.txt - log file from the original VB6 application
