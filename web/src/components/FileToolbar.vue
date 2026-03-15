@@ -44,7 +44,7 @@ function onFileSelected(e: Event) {
       :disabled="loading"
       @click="$emit('paste')"
     >
-      {{ loading ? 'Loading\u2026' : 'Paste' }}
+      {{ loading ? 'Loading\u2026' : 'Load from Clipboard (URL)' }}
     </button>
     <button
       class="btn"
