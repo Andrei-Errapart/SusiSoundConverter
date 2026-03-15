@@ -196,9 +196,9 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8, export_wa
         return;
     }
 
-    // Magic
+    // Magic: byte[1] must be 0x33, byte[0] is 0xDD (Dietz) or 0xE1 (Uhlenbrock)
     try w.print("Magic: {X:0>2} {X:0>2}", .{ data[0], data[1] });
-    if (data[0] == 0xDD and data[1] == 0x33) {
+    if ((data[0] == 0xDD or data[0] == 0xE1) and data[1] == 0x33) {
         try w.print(" (valid IntelliSound)\n", .{});
     } else if (data[0] == 0x00 and data[1] == 0xFF) {
         try w.print(" (encrypted — not supported)\n\n", .{});

@@ -1,4 +1,4 @@
-export type SoundFormat = 'DS3' | 'DX4' | 'DSU' | 'DS6'
+export type SoundFormat = 'DSD' | 'DS3' | 'DX4' | 'DSU' | 'DS6'
 
 export type TrackTableKind =
   | 'primary'

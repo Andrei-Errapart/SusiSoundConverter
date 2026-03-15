@@ -43,8 +43,8 @@ export function parseFile(data: Uint8Array, filename: string): SoundFile {
     throw new ParseError(`File too small (${data.length} bytes, need at least ${DS3_HEADER_SIZE})`)
   }
 
-  // Check magic
-  if (data[0] !== 0xDD || data[1] !== 0x33) {
+  // Check magic: byte[1] must be 0x33, byte[0] is 0xDD (Dietz) or 0xE1 (Uhlenbrock)
+  if ((data[0] !== 0xDD && data[0] !== 0xE1) || data[1] !== 0x33) {
     if (data[0] === 0x00 && data[1] === 0xFF) {
       throw new ParseError('Encrypted file — not supported')
     }
@@ -95,8 +95,9 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
     }
   }
 
-  // Detect sub-format
-  let format: SoundFormat = 'DS3'
+  // Detect sub-format: DSD is structurally identical to DS3, distinguished by extension
+  const isDsd = /\.dsd$/i.test(filename)
+  let format: SoundFormat = isDsd ? 'DSD' : 'DS3'
   let hasMiddle = false
   let hasDsu = false
 
