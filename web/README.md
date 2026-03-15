@@ -42,7 +42,7 @@ Click **Paste** to load a sound file from the clipboard. The button detects the 
 - **File via Ctrl+V** — If you copy a file in your OS file manager and press Ctrl+V, the file is loaded into the last-focused pane.
 - **Fallback** — On browsers that restrict clipboard access (e.g. Safari), a prompt dialog asks you to paste the URL manually.
 
-CORS note: most sound file hosting sites don't allow cross-origin requests. The editor automatically routes through CORS proxies. During local development (`npm run dev`), Vite's built-in proxy handles this without external services.
+**CORS limitation:** Most sound file hosting sites don't allow cross-origin requests. During local development (`npm run dev`), Vite's built-in CORS proxy handles this transparently. On the GitHub Pages deployment, the editor attempts free CORS proxy services (corsproxy.io, allorigins.win), but these are unreliable and may fail. A proper solution would be to deploy a dedicated CORS proxy, e.g. a Cloudflare Worker (free tier: 100k requests/day).
 
 ### Import a WAV or MP3 file
 

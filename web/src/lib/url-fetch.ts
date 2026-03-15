@@ -10,6 +10,11 @@ function devProxy(url: string): string {
 const CORS_PROXIES = [
   // In dev mode, Vite serves a local CORS proxy — try it first
   ...(import.meta.env.DEV ? [devProxy] : []),
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.org/?${encodeURIComponent(url)}`,
+  (url: string) => `https://proxy.cors.sh/${url}`,
+  (url: string) => `https://cors-anywhere.herokuapp.com/${url}`,
+  // Previously tested, currently unavailable — kept as last-resort fallbacks
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
 ]
