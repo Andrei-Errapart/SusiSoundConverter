@@ -1,16 +1,21 @@
 # IntelliSound Web Editor
 
-Browser-based viewer and editor for Dietz/Uhlenbrock IntelliSound sound files.
+Browser-based viewer and editor for Dietz/Uhlenbrock IntelliSound and X-clusive PROFI sound files.
 
 **Live:** <https://Andrei-Errapart.github.io/SusiSoundConverter/>
 
 ## Supported formats
 
-Load and export: `.DS3`, `.DX4`, `.DSU`, `.DS6` (and variants `.DS4`, `.DSD`). ZIP archives containing sound files are also supported — the editor extracts the sound file automatically.
+| Format family | Extensions | Audio | Flash |
+|---------------|-----------|-------|-------|
+| IntelliSound | `.DS3`, `.DX4`, `.DSU`, `.DS6` (and `.DS4`, `.DSD`) | 8-bit unsigned mono, 13,021 Hz | 32/64 Mbit (4/8 MB) |
+| X-clusive PROFI | `.DHE` | 16-bit signed mono, 22,050 Hz | 128 Mbit (16 MB) |
+
+ZIP archives containing sound files are also supported — the editor extracts the sound file automatically.
 
 ## Layout
 
-The editor shows **two panes side by side**. Each pane can load a sound file independently, allowing you to compare files and copy tracks between them.
+The editor shows **two panes side by side**. Each pane can load a sound file independently, allowing you to compare files and copy tracks between them — even across different formats (IntelliSound and DHE).
 
 Each pane contains:
 - **File toolbar** — Load, Paste, and Export buttons, filename, format badge, dirty-flag indicator
@@ -33,6 +38,8 @@ Click **▶** on any non-empty track row to hear it. The row highlights yellow d
 2. In the other pane, click **←** on the target track row to overwrite it with the selected track's audio and loop offset.
 3. Press **Esc** at any time to cancel the selection.
 
+When copying between IntelliSound and DHE files, audio is automatically resampled and converted (8-bit 13,021 Hz to/from 16-bit 22,050 Hz).
+
 ### Paste a URL or file
 
 Click **Paste** to load a sound file from the clipboard. The button detects the clipboard content and acts accordingly:
@@ -46,11 +53,16 @@ Click **Paste** to load a sound file from the clipboard. The button detects the 
 
 ### Import a WAV or MP3 file
 
-Click **📁** on any track row, then pick a `.wav` or `.mp3` file. The audio is automatically converted to **8-bit unsigned mono at 13,021 Hz** (the IntelliSound native format). WAV files must be 8-, 16-, or 24-bit PCM; stereo is mixed down to mono. MP3 decoding uses the browser's built-in audio decoder.
+Click **📁** on any track row, then pick a `.wav` or `.mp3` file. The audio is automatically converted to the target file's native format:
+
+- **IntelliSound files:** 8-bit unsigned mono at 13,021 Hz
+- **DHE files:** 16-bit signed mono at 22,050 Hz
+
+WAV files must be 8-, 16-, or 24-bit PCM; stereo is mixed down to mono. MP3 decoding uses the browser's built-in audio decoder.
 
 ### Export
 
-Click **Export** to download the modified file. The editor validates that total data fits within the device's flash capacity (4 MB or 8 MB depending on format) before saving. The dirty-flag indicator clears on successful export.
+Click **Export** to download the modified file. The editor validates that total data fits within the device's flash capacity (4 MB, 8 MB, or 16 MB depending on format) before saving. The dirty-flag indicator clears on successful export.
 
 ## Track table columns
 
@@ -58,7 +70,7 @@ Click **Export** to download the modified file. The editor validates that total 
 |--------|-------------|
 | **#** | Track index. For paired tables, shows `floor(index / 2)`. |
 | **Size** | Audio data size in bytes. |
-| **Duration** | Playback duration in seconds (size ÷ 13,021 samples/sec). |
+| **Duration** | Playback duration (computed from size, sample rate, and bit depth). |
 | **Loop** | Loop offset in bytes (paired tables only). |
 | **CRC32** | 8-hex-digit fingerprint of the audio data — useful for spotting duplicates. |
 | **Actions** | ▶/■ play/stop, ← overwrite from selection, 📁 import from file. |
