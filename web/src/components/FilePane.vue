@@ -83,7 +83,7 @@ defineExpose({ file })
       />
     </template>
     <div v-else class="empty-pane">
-      <p>Load a sound file (.DSD, .DS3, .DX4, .DSU, .DS6)</p>
+      <p>Load a sound file (.DSD, .DS3, .DX4, .DSU, .DS6, .ZIP)</p>
     </div>
   </div>
 </template>

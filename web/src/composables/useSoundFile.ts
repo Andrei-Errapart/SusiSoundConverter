@@ -3,6 +3,7 @@ import type { SoundFile } from '../types/sound-file'
 import { parseFile, ParseError } from '../lib/parser'
 import { serializeFile, downloadFile } from '../lib/serializer'
 import { computeTotalAudioSize } from '../lib/track-utils'
+import { extractSoundFromZip } from '../lib/zip-extract'
 
 export function useSoundFile() {
   const file = ref<SoundFile | null>(null)
@@ -25,8 +26,17 @@ export function useSoundFile() {
     error.value = null
     try {
       const buffer = await inputFile.arrayBuffer()
-      const data = new Uint8Array(buffer)
-      file.value = parseFile(data, inputFile.name)
+      let data = new Uint8Array(buffer)
+      let filename = inputFile.name
+
+      // If it's a ZIP, try to extract a sound file from it
+      const extracted = extractSoundFromZip(data, filename)
+      if (extracted) {
+        data = extracted.data
+        filename = extracted.filename
+      }
+
+      file.value = parseFile(data, filename)
     } catch (e) {
       if (e instanceof ParseError) {
         error.value = e.message
