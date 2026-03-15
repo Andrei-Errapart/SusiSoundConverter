@@ -108,16 +108,15 @@ function displayIndex(): string {
     </td>
     <td class="col-actions">
       <button
-        v-if="track && track.audio.length > 0"
         class="btn-play"
-        :class="{ playing: isTrackPlaying(side, tableKind, index) }"
+        :class="{ playing: track && isTrackPlaying(side, tableKind, index) }"
+        :disabled="!track || track.audio.length === 0"
         @click="handlePlay"
-        :title="isTrackPlaying(side, tableKind, index) ? 'Stop' : 'Play'"
+        :title="track && isTrackPlaying(side, tableKind, index) ? 'Stop' : 'Play'"
       >
-        {{ isTrackPlaying(side, tableKind, index) ? '\u25A0' : '\u25B6' }}
+        {{ track && isTrackPlaying(side, tableKind, index) ? '\u25A0' : '\u25B6' }}
       </button>
       <button
-        v-if="track"
         class="btn-overwrite"
         :disabled="!canOverwrite()"
         @click="handleOverwrite"
@@ -126,15 +125,14 @@ function displayIndex(): string {
         &larr;
       </button>
       <button
-        v-if="track"
         class="btn-import"
+        :disabled="!track"
         @click="handleImportClick"
         title="Import audio file (WAV, MP3)"
       >
         &#x1F4C2;
       </button>
       <input
-        v-if="track"
         ref="fileInput"
         type="file"
         accept=".wav,.mp3"
@@ -205,8 +203,12 @@ td {
   padding: 1px 6px;
   line-height: 1.2;
 }
-.btn-play:hover {
+.btn-play:hover:not(:disabled) {
   background: #e0e0e0;
+}
+.btn-play:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 .btn-play.playing {
   color: #d63031;
@@ -238,7 +240,11 @@ td {
   line-height: 1.2;
   margin-left: 2px;
 }
-.btn-import:hover {
+.btn-import:hover:not(:disabled) {
   background: #e0e0e0;
+}
+.btn-import:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 </style>
