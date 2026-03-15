@@ -6,16 +6,14 @@ Browser-based viewer and editor for Dietz/Uhlenbrock IntelliSound sound files.
 
 ## Supported formats
 
-Load and export: `.DS3`, `.DX4`, `.DSU`, `.DS6` (and variants `.DS4`, `.DSD`).
-
-Files are XOR-scrambled on disk; the editor handles encoding/decoding transparently.
+Load and export: `.DS3`, `.DX4`, `.DSU`, `.DS6` (and variants `.DS4`, `.DSD`). ZIP archives containing sound files are also supported — the editor extracts the sound file automatically.
 
 ## Layout
 
 The editor shows **two panes side by side**. Each pane can load a sound file independently, allowing you to compare files and copy tracks between them.
 
 Each pane contains:
-- **File toolbar** — Load and Export buttons, filename, format badge, dirty-flag indicator
+- **File toolbar** — Load, Paste, and Export buttons, filename, format badge, dirty-flag indicator
 - **Flash usage bar** — visual capacity gauge
 - **Track tables** — one section per track table in the file (primary, extended, middle, etc.)
 
@@ -23,7 +21,7 @@ Each pane contains:
 
 ### Load and inspect a file
 
-Click **Load** in either pane and pick a sound file. The track tables appear with all tracks listed. The flash usage bar shows how much of the device's flash memory is consumed.
+Click **Load** in either pane and pick a sound file (or a ZIP containing one). The track tables appear with all tracks listed. The flash usage bar shows how much of the device's flash memory is consumed.
 
 ### Play a track
 
@@ -34,6 +32,17 @@ Click **▶** on any non-empty track row to hear it. The row highlights yellow d
 1. Click a non-empty track row in one pane — it highlights **green** to indicate selection.
 2. In the other pane, click **←** on the target track row to overwrite it with the selected track's audio and loop offset.
 3. Press **Esc** at any time to cancel the selection.
+
+### Paste a URL or file
+
+Click **Paste** to load a sound file from the clipboard. The button detects the clipboard content and acts accordingly:
+
+- **URL** — If the clipboard contains an `http://` or `https://` URL (e.g. `https://d-i-e-t-z.de/sounds/DL-USA.DS3`), the file is fetched and loaded directly. ZIP URLs are supported too.
+- **Copied hyperlink** — If you copy a download link from a web page, the editor extracts the URL from the HTML and fetches it.
+- **File via Ctrl+V** — If you copy a file in your OS file manager and press Ctrl+V, the file is loaded into the last-focused pane.
+- **Fallback** — On browsers that restrict clipboard access (e.g. Safari), a prompt dialog asks you to paste the URL manually.
+
+CORS note: most sound file hosting sites don't allow cross-origin requests. The editor automatically routes through CORS proxies. During local development (`npm run dev`), Vite's built-in proxy handles this without external services.
 
 ### Import a WAV or MP3 file
 
@@ -75,5 +84,7 @@ npm run dev       # Vite dev server with hot reload
 npm run build     # Type-check (vue-tsc) + production build
 npm run test      # Run Vitest test suite
 ```
+
+The dev server includes a local CORS proxy at `/cors-proxy/` so that pasting download URLs works without external proxy services. Proxied requests are logged to the terminal.
 
 Built with Vue 3, TypeScript, and Vite.

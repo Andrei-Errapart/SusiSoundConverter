@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import FilePane from './components/FilePane.vue'
 import { useCopyPaste } from './composables/useCopyPaste'
 
 const { clearSelection } = useCopyPaste()
 
+const leftPane = ref<InstanceType<typeof FilePane> | null>(null)
+const rightPane = ref<InstanceType<typeof FilePane> | null>(null)
+const lastFocusedSide = ref<'left' | 'right'>('left')
+
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') clearSelection()
 }
 
-onMounted(() => document.addEventListener('keydown', onKeyDown))
-onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
+function onPaste(e: ClipboardEvent) {
+  const files = e.clipboardData?.files
+  if (files && files.length > 0) {
+    e.preventDefault()
+    const pane = lastFocusedSide.value === 'right' ? rightPane.value : leftPane.value
+    pane?.handlePasteFile(files[0])
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('paste', onPaste)
+})
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('paste', onPaste)
+})
 </script>
 
 <template>
@@ -19,8 +38,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
       <h1>IntelliSound Web Editor</h1>
     </header>
     <div class="panes">
-      <FilePane side="left" />
-      <FilePane side="right" />
+      <div @click="lastFocusedSide = 'left'" @focusin="lastFocusedSide = 'left'">
+        <FilePane ref="leftPane" side="left" />
+      </div>
+      <div @click="lastFocusedSide = 'right'" @focusin="lastFocusedSide = 'right'">
+        <FilePane ref="rightPane" side="right" />
+      </div>
     </div>
   </div>
 </template>

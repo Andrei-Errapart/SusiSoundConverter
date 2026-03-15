@@ -8,6 +8,7 @@ import { extractSoundFromZip } from '../lib/zip-extract'
 export function useSoundFile() {
   const file = ref<SoundFile | null>(null)
   const error = ref<string | null>(null)
+  const loading = ref(false)
 
   const totalAudioBytes = computed(() => {
     if (!file.value) return 0
@@ -22,21 +23,23 @@ export function useSoundFile() {
 
   const flashTotal = computed(() => file.value?.flashSize ?? 0)
 
+  function loadData(data: Uint8Array, filename: string): void {
+    // If it's a ZIP, try to extract a sound file from it
+    const extracted = extractSoundFromZip(data, filename)
+    if (extracted) {
+      data = extracted.data
+      filename = extracted.filename
+    }
+
+    file.value = parseFile(data, filename)
+  }
+
   async function loadFile(inputFile: File): Promise<void> {
     error.value = null
+    loading.value = true
     try {
       const buffer = await inputFile.arrayBuffer()
-      let data = new Uint8Array(buffer)
-      let filename = inputFile.name
-
-      // If it's a ZIP, try to extract a sound file from it
-      const extracted = extractSoundFromZip(data, filename)
-      if (extracted) {
-        data = extracted.data
-        filename = extracted.filename
-      }
-
-      file.value = parseFile(data, filename)
+      loadData(new Uint8Array(buffer), inputFile.name)
     } catch (e) {
       if (e instanceof ParseError) {
         error.value = e.message
@@ -44,6 +47,8 @@ export function useSoundFile() {
         error.value = `Failed to load file: ${e}`
       }
       file.value = null
+    } finally {
+      loading.value = false
     }
   }
 
@@ -65,9 +70,11 @@ export function useSoundFile() {
   return {
     file,
     error,
+    loading,
     totalAudioBytes,
     flashUsed,
     flashTotal,
+    loadData,
     loadFile,
     exportFile,
   }

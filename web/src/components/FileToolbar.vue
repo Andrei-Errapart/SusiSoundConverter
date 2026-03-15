@@ -5,10 +5,12 @@ import type { SoundFile } from '../types/sound-file'
 const props = defineProps<{
   file: SoundFile | null
   error: string | null
+  loading: boolean
 }>()
 
 const emit = defineEmits<{
   load: [file: File]
+  paste: []
   export: []
 }>()
 
@@ -37,6 +39,13 @@ function onFileSelected(e: Event) {
       @change="onFileSelected"
     />
     <button class="btn" @click="openFilePicker">Load File</button>
+    <button
+      class="btn"
+      :disabled="loading"
+      @click="$emit('paste')"
+    >
+      {{ loading ? 'Loading\u2026' : 'Paste' }}
+    </button>
     <button
       class="btn"
       :disabled="!file"
