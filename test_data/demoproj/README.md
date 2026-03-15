@@ -9,5 +9,4 @@
 - 203l-pfeife.wav
 - demoproj.dsp - Project file, listing all sound files that make up one DSU file.
 - DL-UNI1.DS3 - Base file
-- expected/demoproj.DSU - Expected output file
-- expected/susisound-log.txt - log file from the original VB6 application
+- Expected output files are in tests/0003_build_dsu/expected/

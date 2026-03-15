@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Run build_dsu on the demoproj test data and verify output matches expected.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
+EXPECTED_DIR="$TEST_DIR/expected"
+BUILD_DSU="$REPO_ROOT/zig-out/bin/build_dsu"
+DSP_FILE="$REPO_ROOT/test_data/demoproj/demoproj.dsp"
+OUTPUT_DSU="$REPO_ROOT/test_data/demoproj/demoproj.DSU"
+
+if [[ ! -x "$BUILD_DSU" ]]; then
+    echo "ERROR: $BUILD_DSU not found — run 'zig build' first"
+    exit 1
+fi
+
+failed=0
+
+# Clean up any previous output
+rm -f "$OUTPUT_DSU"
+
+# Run build_dsu and capture log
+actual_log=$("$BUILD_DSU" "$DSP_FILE" 2>&1)
+
+# Compare DSU binary output
+if cmp -s "$OUTPUT_DSU" "$EXPECTED_DIR/demoproj.DSU"; then
+    echo "OK   demoproj.DSU binary"
+else
+    echo "FAIL demoproj.DSU binary differs"
+    failed=$((failed + 1))
+fi
+
+# Compare log output
+if diff -u "$EXPECTED_DIR/susisound-log.txt" <(echo "$actual_log") > /dev/null 2>&1; then
+    echo "OK   susisound-log.txt"
+else
+    echo "FAIL susisound-log.txt"
+    diff -u "$EXPECTED_DIR/susisound-log.txt" <(echo "$actual_log") || true
+    failed=$((failed + 1))
+fi
+
+# Clean up generated file
+rm -f "$OUTPUT_DSU"
+
+echo ""
+echo "2 tested, $failed failed"
+[[ $failed -eq 0 ]]
