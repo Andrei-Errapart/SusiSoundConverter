@@ -15,13 +15,16 @@ if [[ ! -x "$BUILD_DSU" ]]; then
     exit 1
 fi
 
+ACTUAL_LOG=$(mktemp)
+trap 'rm -f "$OUTPUT_DSU" "$ACTUAL_LOG"' EXIT
+
 failed=0
 
 # Clean up any previous output
 rm -f "$OUTPUT_DSU"
 
-# Run build_dsu and capture log
-actual_log=$("$BUILD_DSU" "$DSP_FILE" 2>&1)
+# Run build_dsu, capturing log to a file to preserve exact bytes
+"$BUILD_DSU" "$DSP_FILE" > "$ACTUAL_LOG" 2>&1
 
 # Compare DSU binary output
 if cmp -s "$OUTPUT_DSU" "$EXPECTED_DIR/demoproj.DSU"; then
@@ -32,16 +35,13 @@ else
 fi
 
 # Compare log output
-if diff -u "$EXPECTED_DIR/susisound-log.txt" <(echo "$actual_log") > /dev/null 2>&1; then
+if cmp -s "$ACTUAL_LOG" "$EXPECTED_DIR/susisound-log.txt"; then
     echo "OK   susisound-log.txt"
 else
     echo "FAIL susisound-log.txt"
-    diff -u "$EXPECTED_DIR/susisound-log.txt" <(echo "$actual_log") || true
+    diff -u "$EXPECTED_DIR/susisound-log.txt" "$ACTUAL_LOG" || true
     failed=$((failed + 1))
 fi
-
-# Clean up generated file
-rm -f "$OUTPUT_DSU"
 
 echo ""
 echo "2 tested, $failed failed"
