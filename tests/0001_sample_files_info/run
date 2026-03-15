@@ -1,50 +1,56 @@
 #!/usr/bin/env bash
-# Download sample files and run the converter in info-only mode.
+# Run infosound on each sound file in test_data/ and compare output to expected.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
-DOWNLOAD_DIR="$TEST_DIR/downloads"
-CONVERTER="$REPO_ROOT/SusiSoundConverter"
+EXPECTED_DIR="$TEST_DIR/expected"
+INFOSOUND="$REPO_ROOT/zig-out/bin/infosound"
 
-if [[ ! -x "$CONVERTER" ]]; then
-    echo "ERROR: $CONVERTER not found or not executable"
+if [[ ! -x "$INFOSOUND" ]]; then
+    echo "ERROR: $INFOSOUND not found — run 'zig build' first"
     exit 1
 fi
 
-mkdir -p "$DOWNLOAD_DIR"
+if [[ ! -d "$EXPECTED_DIR" ]]; then
+    echo "ERROR: $EXPECTED_DIR not found"
+    exit 1
+fi
 
-# Extract URLs from sample-input-files.yaml
-urls=$(grep -oP 'https?://\S+' "$REPO_ROOT/tests/sample-input-files.yaml")
+# Strip the "=== <path> ===" header line (contains machine-specific path)
+# and any trailing blank lines.
+normalize() {
+    sed '1{/^=== .* ===$/d}' | sed -e :a -e '/^\n*$/{$d;N;ba}'
+}
 
-for url in $urls; do
-    # Extract file path from the file= query parameter
-    file_path=$(echo "$url" | grep -oP 'file=\K.*')
-    download_url="https://www.d-i-e-t-z.de/$file_path"
-    filename=$(basename "$file_path")
-    zip_file="$DOWNLOAD_DIR/$filename"
-    extract_dir="$DOWNLOAD_DIR/${filename%.*}"
+failed=0
+tested=0
 
-    # Download if not already present
-    if [[ ! -f "$zip_file" ]]; then
-        echo "Downloading $filename..."
-        curl -fsSL -o "$zip_file" "$download_url"
+for sound_file in "$REPO_ROOT"/test_data/*.DS3 "$REPO_ROOT"/test_data/*.DX4 "$REPO_ROOT"/test_data/*.DS6 "$REPO_ROOT"/test_data/*.DSU; do
+    [[ -f "$sound_file" ]] || continue
+
+    base="$(basename "$sound_file")"
+    expected="$EXPECTED_DIR/${base}.expected"
+
+    if [[ ! -f "$expected" ]]; then
+        echo "SKIP $base (no expected file)"
+        continue
     fi
 
-    # Extract if not already done
-    if [[ ! -d "$extract_dir" ]]; then
-        echo "Extracting $filename..."
-        mkdir -p "$extract_dir"
-        unzip -q -o "$zip_file" -d "$extract_dir"
-    fi
+    tested=$((tested + 1))
 
-    # Run converter in info-only mode on all extracted files
-    echo "Running converter on $filename contents..."
-    find "$extract_dir" -type f | while read -r f; do
-        echo "  $f"
-        "$CONVERTER" -i "$f"
-    done
+    actual=$("$INFOSOUND" "$sound_file" 2>&1) || true
+
+    if diff -u <(normalize < "$expected") <(echo "$actual" | normalize) > /dev/null 2>&1; then
+        echo "OK   $base"
+    else
+        echo "FAIL $base"
+        diff -u <(normalize < "$expected") <(echo "$actual" | normalize) || true
+        failed=$((failed + 1))
+    fi
 done
 
-echo "Test passed."
+echo ""
+echo "$tested tested, $failed failed"
+[[ $failed -eq 0 ]]

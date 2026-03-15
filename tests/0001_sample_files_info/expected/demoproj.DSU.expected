@@ -1,0 +1,109 @@
+=== /home/andrei/2026/SusiSoundConverter/test_data/demoproj.DSU ===
+File size: 779615 bytes
+Magic: DD 33 (valid IntelliSound)
+Format tag: FF FF (DS3)
+Audio region: 0x000300–0x0BE55F (778847 bytes, 59.8s at 13021 Hz)
+Flash usage: 779615 / 4194304 bytes (3414689 free)
+
+--- Primary track index (0x004–0x093, 48 entries) ---
+Entries used: 48 / 48
+
+  Entry    Offset      Size  Duration     CRC32  Enc
+  -----  --------  --------  --------  --------  ---
+      0  0x000300     10708  0.822s        22404489  XOR
+      1  0x002CD4     34275  2.632s        A78A3754  XOR
+      2  0x00B2B7     59982  4.607s        FCF5CC95  XOR
+      3  0x019D05      6197  0.476s        9E5E2713  XOR
+      4  0x01B53A     32142  2.468s        B3370A9A  XOR
+      5  0x0232C8     43115  3.311s        282CC7B1  XOR
+      6  0x02DB33      1905  0.146s        10B09AE4  XOR
+      7  0x02E2A4     46412  3.564s        F624B95E  XOR
+      8  0x0397F0        44  0.003s        CADD169B  XOR
+      9  0x03981C     19967  1.533s        C58A6166  XOR
+     10  0x03E61B         1  0.000s        D202EF8D  raw
+     11  0x03E61B         1  0.000s        D202EF8D  raw
+     12  0x03E61C         1  0.000s        D202EF8D  raw
+     13  0x03E61C         1  0.000s        D202EF8D  raw
+     14  0x03E61D         1  0.000s        D202EF8D  raw
+     15  0x03E61D         1  0.000s        D202EF8D  raw
+     16  0x03E61E         1  0.000s        D202EF8D  raw
+     17  0x03E61E         1  0.000s        D202EF8D  raw
+     18  0x03E61F        11  0.001s        AC7CC27A  XOR
+     19  0x03E62A     22864  1.756s        2ACC4451  XOR
+     20  0x043F7A     21315  1.637s        8884998E  XOR
+     21  0x043F7A     21315  1.637s        8884998E  XOR
+     22  0x0492BD      5307  0.408s        3CF66CEE  XOR
+     23  0x0492BD      5307  0.408s        3CF66CEE  XOR
+     24  0x04A778     17119  1.315s        AE56CF58  XOR
+     25  0x04A778     17119  1.315s        AE56CF58  XOR
+     26  0x04EA57     51790  3.977s        E3F27CC2  XOR
+     27  0x05B4A5      2503  0.192s        667932FD  XOR
+     28  0x05BE6C     64763  4.974s        309C75E4  XOR
+     29  0x05BE6C     64763  4.974s        309C75E4  XOR
+     30  0x06BB67         3  0.000s        25F75AD9  raw
+     31  0x06BB67         3  0.000s        25F75AD9  raw
+     32  0x06BB6A         3  0.000s        25F75AD9  raw
+     33  0x06BB6A         3  0.000s        25F75AD9  raw
+     34  0x06BB6D         3  0.000s        25F75AD9  raw
+     35  0x06BB6D         3  0.000s        25F75AD9  raw
+     36  0x06BB70         3  0.000s        25F75AD9  raw
+     37  0x06BB70         3  0.000s        25F75AD9  raw
+     38  0x06BB73     12181  0.935s        A4D3BC24  XOR
+     39  0x06BB73     12181  0.935s        A4D3BC24  XOR
+     40  0x06EB08     15599  1.198s        FF335249  XOR
+     41  0x06EB08     15599  1.198s        FF335249  XOR
+     42  0x0727F7     14801  1.137s        B0E85940  XOR
+     43  0x0727F7     14801  1.137s        B0E85940  XOR
+     44  0x0761C8      5586  0.429s        EC93C48D  XOR
+     45  0x07779A     21157  1.625s        0B590F5D  XOR
+     46  0x07CA3F        39  0.003s        ED0E8569  XOR
+     47  0x07CA66     13488  1.036s        A835E03E  XOR
+
+--- Extended track index (0x100–0x177, 40 entries, 20 pairs) ---
+Entries used: 40 / 40
+
+  Pair    Addr A    Addr B      Size  Duration     CRC32  Enc
+  ----  --------  --------  --------  --------  --------  ---
+     0  0x07FF16  0x07FF16      5495  0.422s        39E3F35D  XOR
+     1  0x08148D  0x08148D      5857  0.450s        5D47AD4D  XOR
+     2  0x082B6E  0x082B6E      4919  0.378s        6E336379  XOR
+     3  0x083EA5  0x083EA5      5309  0.408s        C987DDD0  XOR
+     4  0x085362  0x085362      8171  0.628s        88C74FEC  XOR
+     5  0x08734D  0x08734D      8557  0.657s        AD0F6151  XOR
+     6  0x0894BA  0x0894BA      8295  0.637s        609E2568  XOR
+     7  0x08B521  0x08B521      8433  0.648s        FB57777B  XOR
+     8  0x08D612  0x08D612      8181  0.628s        A6C4C845  XOR
+     9  0x08F607  0x08F607      8549  0.657s        45B13E05  XOR
+    10  0x09176C  0x09176C      8285  0.636s        AEFAA389  XOR
+    11  0x0937C9  0x0937C9      8443  0.648s        53129A47  XOR
+    12  0x0958C4  0x0958C4      4509  0.346s        44AC4348  XOR
+    13  0x096A61  0x096A61      4499  0.346s        4384A407  XOR
+    14  0x097BF4  0x097BF4      4341  0.333s        807EBD39  XOR
+    15  0x098CE9  0x098CE9      4519  0.347s        E42AB10B  XOR
+    16  0x099E90  0x099E90      5445  0.418s        B8869780  XOR
+    17  0x09B3D5  0x09B3D5      5893  0.453s        862BE83D  XOR
+    18  0x09CADA  0x09CADA      4915  0.377s        C2EB0AB2  XOR
+    19  0x09DE0D  0x09DE0D    132946  10.210s       5CF1C444  raw
+
+--- DSU user sound pointers (0x0AA–0x0CD) ---
+  Slot  Sound   Seg    Offset      Size  Duration     CRC32  Enc
+  ----  -----  ----  --------  --------  --------  --------  ---
+     1    200   Anf  0x09F2CE      2877  0.221s        15D7905C  raw
+     2    200  Loop  0x09FE0C      4412  0.339s        162BA58F  raw
+     3    200   End  0x0A0F49         -         -         -    -
+     4    201   Anf  0x0A0F4A     76445  5.871s        3E99FC80  raw
+     5    201  Loop  0x0B39E8         -         -         -    -
+     6    201   End  0x0B39E9         -         -         -    -
+     7    202   Anf  0x0B39EA     14048  1.079s        9AA5ACC1  raw
+     8    202  Loop  0x0B70CB         -         -         -    -
+     9    202   End  0x0B70CC     17117  1.315s        C49BB6AB  raw
+    10    203   Anf  0x0BB3AA      1804  0.139s        E6F01818  raw
+    11    203  Loop  0x0BBAB7      6193  0.476s        98D5AEDF  raw
+    12    203   End  0x0BD2E9      4725  0.363s        C422358E  raw
+
+--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---
+  0x0CE: 87 3C 01 FF FF 04 FF FF 2D 00 00 FF FF FF FF FF
+  0x0DE: FF 04 29 2F 6B 73 D8 E0 18 20 50 56 96 9D 03 09
+  0x0EE: 3E 45 AC B4 A5 A7 D4 D6 00 00 13 15 00 00 00 00
+  0x0FE: 03 21
+

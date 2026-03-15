@@ -1,7 +1,7 @@
 .{
     .name = .build_dsu,
     .version = "0.1.0",
-    .fingerprint = 0xe6418066403678bf,
+    .fingerprint = 0x854be66ccdfa5300,
     .minimum_zig_version = "0.16.0-dev.2860+9c5460316",
     .dependencies = .{},
     .paths = .{

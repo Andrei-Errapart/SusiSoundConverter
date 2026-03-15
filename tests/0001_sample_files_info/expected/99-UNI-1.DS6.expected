@@ -1,0 +1,222 @@
+=== /home/andrei/2026/SusiSoundConverter/test_data/99-UNI-1.DS6 ===
+File size: 3151731 bytes
+Magic: DD 33 (valid IntelliSound)
+Format tag: 25 05 (DS6)
+Audio region: 0x000627–0x301773 (3150156 bytes, 241.9s at 13021 Hz)
+Flash usage: 3151731 / 8388608 bytes (5236877 free)
+Sound name: "99-UNI-1"
+
+--- Primary track index (0x008–0x0A9, 54 entries) ---
+Entries used: 54 / 54
+
+  Entry    Offset      Size  Duration     CRC32  Enc
+  -----  --------  --------  --------  --------  ---
+      0  0x001D73     46451  3.567s        F3744644  XOR
+      1  0x00D2E6    173681  13.339s       4C85C003  XOR
+      2  0x037957     14000  1.075s        73576FF3  XOR
+      3  0x03B007     48928  3.758s        70A33ABF  XOR
+      4  0x046F27     55804  4.286s        00E2CA58  XOR
+      5  0x054923     27601  2.120s        8EFEAEFD  XOR
+      6  0x05B4F4     69007  5.300s        AB1B5F39  XOR
+      7  0x06C283     22586  1.735s        2A008043  XOR
+      8  0x071ABD    172283  13.231s       944194E4  XOR
+      9  0x09BBB8      4860  0.373s        E038F911  XOR
+     10  0x09CEB4     58245  4.473s        503514D6  XOR
+     11  0x0AB239         1  0.000s        D202EF8D  raw
+     12  0x0AB239         1  0.000s        D202EF8D  raw
+     13  0x0AB23A         1  0.000s        D202EF8D  raw
+     14  0x0AB23A         1  0.000s        D202EF8D  raw
+     15  0x0AB23B         1  0.000s        D202EF8D  raw
+     16  0x0AB23B         1  0.000s        D202EF8D  raw
+     17  0x0AB23C     65631  5.040s        5D800E06  XOR
+     18  0x0AB23C     65631  5.040s        5D800E06  XOR
+     19  0x0BB29B     49611  3.810s        162D958E  XOR
+     20  0x0BB29B     49611  3.810s        162D958E  XOR
+     21  0x0C7466      6533  0.502s        117196EA  XOR
+     22  0x0C7466      6533  0.502s        117196EA  XOR
+     23  0x0C8DEB     19619  1.507s        804970E9  XOR
+     24  0x0CDA8E     45263  3.476s        73309952  XOR
+     25  0x0D8B5D     66196  5.084s        55769858  XOR
+     26  0x0E8DF1      2420  0.186s        5DD9FAE2  XOR
+     27  0x0E9765     68497  5.261s        B022331F  XOR
+     28  0x0E9765     68497  5.261s        B022331F  XOR
+     29  0x0FA2F6         1  0.000s        D202EF8D  raw
+     30  0x0FA2F6         1  0.000s        D202EF8D  raw
+     31  0x0FA2F7     12549  0.964s        61A2229E  XOR
+     32  0x0FA2F7     12549  0.964s        61A2229E  XOR
+     33  0x0FD3FC      5982  0.459s        B7B392F1  XOR
+     34  0x0FD3FC      5982  0.459s        B7B392F1  XOR
+     35  0x0FEB5A     61826  4.748s        A5DAF142  XOR
+     36  0x10DCDC    171457  13.168s       304DDA2E  XOR
+     37  0x137A9D     40529  3.113s        A20D1CA6  XOR
+     38  0x137A9D     40529  3.113s        A20D1CA6  XOR
+     39  0x1418EE      1312  0.101s        AB55CD3E  XOR
+     40  0x141E0E     20306  1.559s        B9D93A3A  XOR
+     41  0x146D60     13284  1.020s        53607AB8  XOR
+     42  0x146D60     13284  1.020s        53607AB8  XOR
+     43  0x14A144     12806  0.983s        F0DDD1A0  XOR
+     44  0x14A144     12806  0.983s        F0DDD1A0  XOR
+     45  0x14D34A      6908  0.531s        9898BB00  XOR
+     46  0x14D34A      6908  0.531s        9898BB00  XOR
+     47  0x14EE46     75125  5.770s        7E7CC622  XOR
+     48  0x14EE46     75125  5.770s        7E7CC622  XOR
+     49  0x1613BB     17303  1.329s        8BDC6009  XOR
+     50  0x165752     37555  2.884s        C5BA588B  XOR
+     51  0x16EA05     18719  1.438s        1E98A05B  XOR
+     52  0x16EA05     18719  1.438s        1E98A05B  XOR
+     53  0x173324   1631311  125.283s      19C940AA  XOR
+
+--- Extended table 1 (0x100–0x207, 88 entries, 44 pairs) ---
+Entries used: 88 / 88
+
+  Pair    Addr A    Addr B      Size  Duration     CRC32  Enc
+  ----  --------  --------  --------  --------  --------  ---
+     0  0x179632  0x179632      6964  0.535s        AA74C00E  XOR
+     1  0x17B166  0x17B166      7273  0.559s        17668831  XOR
+     2  0x17CDCF  0x17CDCF      6666  0.512s        0F738F90  XOR
+     3  0x17E7D9  0x17E7D9      6512  0.500s        ABC5D401  XOR
+     4  0x180149  0x180149     12189  0.936s        384DA7AF  XOR
+     5  0x1830E6  0x1830E6     13217  1.015s        AA42AFAC  XOR
+     6  0x186487  0x186487     12969  0.996s        45A107DD  XOR
+     7  0x189730  0x189730     13294  1.021s        432DBD10  XOR
+     8  0x18CB1E  0x18CB1E     12171  0.935s        DDA5A4BE  XOR
+     9  0x18FAA9  0x18FAA9     12812  0.984s        40AE9E09  XOR
+    10  0x192CB5  0x192CB5     12812  0.984s        4C7ACDA4  XOR
+    11  0x195EC1  0x195EC1     13103  1.006s        AEBAD0C8  XOR
+    12  0x1991F0  0x1991F0      6937  0.533s        74D13D96  XOR
+    13  0x19AD09  0x19AD09      7205  0.553s        EEEE24B8  XOR
+    14  0x19C92E  0x19C92E      6471  0.497s        847C1423  XOR
+    15  0x19E275  0x19E275      6111  0.469s        1D69CC01  XOR
+    16  0x19FA54  0x19FA54      6915  0.531s        4267ECEF  XOR
+    17  0x1A1557  0x1A1557      7168  0.550s        0D8D2EDC  XOR
+    18  0x1A3157  0x1A3157      6476  0.497s        6D233B05  XOR
+    19  0x1A4AA3  0x1A4AA3      6163  0.473s        0EAFC66C  XOR
+    20  0x1A62B6  0x1A62B6      6270  0.482s        B87DA08D  XOR
+    21  0x1A7B34  0x1A7B34      6506  0.500s        4DC78BB8  XOR
+    22  0x1A949E  0x1A949E      6190  0.475s        89B9DE6F  XOR
+    23  0x1AACCC  0x1AACCC      5758  0.442s        7ABD4562  XOR
+    24  0x1AC34A  0x1AC34A      5389  0.414s        2FA78678  XOR
+    25  0x1AD857  0x1AD857      6930  0.532s        76940DCF  XOR
+    26  0x1AF369  0x1AF369      6345  0.487s        BBFB1606  XOR
+    27  0x1B0C32  0x1B0C32      6923  0.532s        4C1E0A32  XOR
+    28  0x1B273D  0x1B273D      6187  0.475s        659C6D5C  XOR
+    29  0x1B3F68  0x1B3F68      6368  0.489s        12B3A8F5  XOR
+    30  0x1B5848  0x1B5848      5958  0.458s        AE60B49D  XOR
+    31  0x1B6F8E  0x1B6F8E      5731  0.440s        D95E751D  XOR
+    32  0x1B85F1  0x1B85F1      5402  0.415s        C130AB82  XOR
+    33  0x1B9B0B  0x1B9B0B      6920  0.531s        CD98FA4D  XOR
+    34  0x1BB613  0x1BB613      6388  0.491s        693EA977  XOR
+    35  0x1BCF07  0x1BCF07      6933  0.532s        6473A086  XOR
+    36  0x1BEA1C  0x1BEA1C     10771  0.827s        025354A8  XOR
+    37  0x1C142F  0x1C142F      9144  0.702s        D4074024  XOR
+    38  0x1C37E7  0x1C37E7      9696  0.745s        13EB422C  XOR
+    39  0x1C5DC7  0x1C5DC7      8328  0.640s        F6853CBB  XOR
+    40  0x1C7E4F  0x1C7E4F      7196  0.553s        193567D4  XOR
+    41  0x1C9A6B  0x1C9A6B      6158  0.473s        8D117A44  XOR
+    42  0x1CB279  0x1CB279      5958  0.458s        CCDAEB43  XOR
+    43  0x1CC9BF  0x1CC9BF   1265076  97.157s       2BCFB305  XOR
+
+--- Extended table 2 (0x2B0–0x483, 156 entries, 78 pairs) ---
+Entries used: 156 / 156
+
+  Pair    Addr A    Addr B      Size  Duration     CRC32  Enc
+  ----  --------  --------  --------  --------  --------  ---
+     0  0x1CE2B0  0x1CE2B0         1  0.000s        D202EF8D  raw
+     1  0x1CE2B1  0x1CE2B1         1  0.000s        D202EF8D  raw
+     2  0x1CE2B2  0x1CE2B2         1  0.000s        D202EF8D  raw
+     3  0x1CE2B3  0x1CE2B3         1  0.000s        D202EF8D  raw
+     4  0x1CE2B4  0x1CE2B4         1  0.000s        D202EF8D  raw
+     5  0x1CE2B5  0x1CE2B5         1  0.000s        D202EF8D  raw
+     6  0x1CE2B6  0x1CE2B6         1  0.000s        D202EF8D  raw
+     7  0x1CE2B7  0x1CE2B7         1  0.000s        D202EF8D  raw
+     8  0x1CE2B8  0x1CE2B8         1  0.000s        D202EF8D  raw
+     9  0x1CE2B9  0x1CE2B9         1  0.000s        D202EF8D  raw
+    10  0x1CE2BA  0x1CE2BA         1  0.000s        D202EF8D  raw
+    11  0x1CE2BB  0x1CE2BB         1  0.000s        D202EF8D  raw
+    12  0x1CE2BC  0x1CE2BC         1  0.000s        D202EF8D  raw
+    13  0x1CE2BD  0x1CE2BD         1  0.000s        D202EF8D  raw
+    14  0x1CE2BE  0x1CE2BE         1  0.000s        D202EF8D  raw
+    15  0x1CE2BF  0x1CE2BF         1  0.000s        D202EF8D  raw
+    16  0x1CE2C0  0x1CE2C0         1  0.000s        D202EF8D  raw
+    17  0x1CE2C1  0x1CE2C1         1  0.000s        D202EF8D  raw
+    18  0x1CE2C2  0x1CE2C2         1  0.000s        D202EF8D  raw
+    19  0x1CE2C3  0x1CE2C3         1  0.000s        D202EF8D  raw
+    20  0x1CE2C4  0x1CE2C4         1  0.000s        D202EF8D  raw
+    21  0x1CE2C5  0x1CE2C5         1  0.000s        D202EF8D  raw
+    22  0x1CE2C6  0x1CE2C6         1  0.000s        D202EF8D  raw
+    23  0x1CE2C7  0x1CE2C7         1  0.000s        D202EF8D  raw
+    24  0x1CE2C8  0x1CE2C8         1  0.000s        D202EF8D  raw
+    25  0x1CE2C9  0x1CE2C9         1  0.000s        D202EF8D  raw
+    26  0x1CE2CA  0x1CE2CA         1  0.000s        D202EF8D  raw
+    27  0x1CE2CB  0x1CE2CB         1  0.000s        D202EF8D  raw
+    28  0x1CE2CC  0x1CE2CC         1  0.000s        D202EF8D  raw
+    29  0x1CE2CD  0x1CE2CD         1  0.000s        D202EF8D  raw
+    30  0x1CE2CE  0x1CE2CE         1  0.000s        D202EF8D  raw
+    31  0x1CE2CF  0x1CE2CF         1  0.000s        D202EF8D  raw
+    32  0x1CE2D0  0x1CE2D0         1  0.000s        D202EF8D  raw
+    33  0x1CE2D1  0x1CE2D1         1  0.000s        D202EF8D  raw
+    34  0x1CE2D2  0x1CE2D2         1  0.000s        D202EF8D  raw
+    35  0x1CE2D3  0x1CE2D3         1  0.000s        D202EF8D  raw
+    36  0x1CE2D4  0x1CE2D4         1  0.000s        D202EF8D  raw
+    37  0x1CE2D5  0x1CE2D5         1  0.000s        D202EF8D  raw
+    38  0x1CE2D6  0x1CE2D6         1  0.000s        D202EF8D  raw
+    39  0x1CE2D7  0x1CE2D7         1  0.000s        D202EF8D  raw
+    40  0x1CE2D8  0x1CE2D8         1  0.000s        D202EF8D  raw
+    41  0x1CE2D9  0x1CE2D9         1  0.000s        D202EF8D  raw
+    42  0x1CE2DA  0x1CE2DA     97651  7.500s        DBAC0A82  XOR
+    43  0x1E604D  0x1E604D         1  0.000s        D202EF8D  raw
+    44  0x1E604E  0x1E604E     88375  6.787s        EC1A9D5B  XOR
+    45  0x1FB985  0x1FB985         1  0.000s        D202EF8D  raw
+    46  0x1FB986  0x1FB986     20580  1.581s        D0FAF0DB  XOR
+    47  0x2009EA  0x2009EA     28602  2.197s        B247E6BC  XOR
+    48  0x2079A4  0x2079A4     51245  3.936s        B83C82C4  XOR
+    49  0x2141D1  0x2141D1         1  0.000s        D202EF8D  raw
+    50  0x2141D2  0x2141D2     52844  4.058s        D2C6D7B9  XOR
+    51  0x22103E  0x22103E         1  0.000s        D202EF8D  raw
+    52  0x22103F  0x22103F    151340  11.623s       D7DB685F  XOR
+    53  0x245F6B  0x245F6B         1  0.000s        D202EF8D  raw
+    54  0x245F6C  0x245F6C      9871  0.758s        C152378E  XOR
+    55  0x2485FB  0x2485FB         1  0.000s        D202EF8D  raw
+    56  0x2485FC  0x2485FC     20875  1.603s        60E442AE  XOR
+    57  0x24D787  0x24D787         1  0.000s        D202EF8D  raw
+    58  0x24D788  0x24D788     33236  2.552s        86677432  XOR
+    59  0x25595C  0x25595C     25031  1.922s        91B7B696  XOR
+    60  0x25BB23  0x286646    196302  15.076s       610FB327  XOR
+    61  0x28B9F1  0x28B9F1         1  0.000s        D202EF8D  raw
+    62  0x28B9F2  0x2A8A0A    133190  10.229s       2DF81C93  XOR
+    63  0x2AC238  0x2AC238         1  0.000s        D202EF8D  raw
+    64  0x2AC239  0x2C77E9    117328  9.011s        C3957EC9  XOR
+    65  0x2C8C89  0x2C8C89         1  0.000s        D202EF8D  raw
+    66  0x2C8C8A  0x2CB477     54519  4.187s        4550576D  XOR
+    67  0x2D6181  0x2D6181         1  0.000s        D202EF8D  raw
+    68  0x2D6182  0x2D77F0     28208  2.166s        58666328  XOR
+    69  0x2DCFB2  0x2DCFB2         1  0.000s        D202EF8D  raw
+    70  0x2DCFB3  0x2DCFB3      4459  0.342s        13B0FA79  XOR
+    71  0x2DE11E  0x2DE11E     11146  0.856s        0DB7E47C  XOR
+    72  0x2E0CA8  0x2E0CA8      1921  0.148s        F844A8BD  XOR
+    73  0x2E1429  0x2E1429      2993  0.230s        864E2AB5  XOR
+    74  0x2E1FDA  0x2E1FDA      6512  0.500s        68F7C942  XOR
+    75  0x2E394A  0x2E394A      1551  0.119s        F72262D9  XOR
+    76  0x2E3F59  0x2E3F59      5566  0.427s        C8432913  XOR
+    77  0x2E5517  0x2E5517    115292  8.854s        10144D4F  XOR
+
+--- Extended table 3 (0x490–0x4BF, 16 entries, 8 pairs) ---
+Entries used: 16 / 16
+
+  Pair    Addr A    Addr B      Size  Duration     CRC32  Enc
+  ----  --------  --------  --------  --------  --------  ---
+     0  0x2E662A  0x2E662A     45974  3.531s        1A95FF65  XOR
+     1  0x2F19C0  0x2F19C0     64941  4.987s        F948590A  XOR
+     2  0x30176D  0x30176D         1  0.000s        D202EF8D  raw
+     3  0x30176E  0x30176E         1  0.000s        D202EF8D  raw
+     4  0x30176F  0x30176F         1  0.000s        D202EF8D  raw
+     5  0x301770  0x301770         1  0.000s        D202EF8D  raw
+     6  0x301771  0x301771         1  0.000s        D202EF8D  raw
+     7  0x301772  0x301772         1  0.000s        D202EF8D  raw
+
+--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---
+  0x0CE: 81 00 09 00 FF 04 00 00 00 00 00 00 00 00 00 00
+  0x0DE: 00 04 29 2F 6B 73 D8 E0 18 20 50 56 96 9D 03 09
+  0x0EE: 3E 45 AC B4 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0FE: 06 00
+
