@@ -13,9 +13,11 @@ and Dietz micro-IS4 V2 manuals.
 
 ## Format family
 
-All formats share the same magic number (`DD 33`), header-plus-audio structure,
+All formats share the same two-byte magic (`xx 33`), header-plus-audio structure,
 and XOR scrambling scheme (applied to track indices, configuration, and audio
-data). They differ in header regions used and audio appended.
+data). They differ in header regions used and audio appended. The first magic
+byte identifies the product line: `DD` for Dietz (DL-*) and `E1` for
+Uhlenbrock (SB-*).
 
 | Extension | Bit depth | Modules        | Description                          |
 |-----------|-----------|----------------|--------------------------------------|
@@ -35,18 +37,23 @@ data). They differ in header regions used and audio appended.
 
 ## Reference files
 
-| File             | Format | Size (bytes) | Audio (bytes) | Duration   |
-|------------------|--------|-------------|---------------|------------|
-| DL-UNI1.DS3      | DS3    | 651,982     | 651,214       | ~50.0 s    |
-| 99-Spreewald.DS3 | DS3    | 601,894     | 601,126       | ~46.2 s    |
-| DL-USA-Holz.DS3  | DS3    | 563,228     | 562,460       | ~43.2 s    |
-| SB-ALT.DS3       | DS3    | 435,300     | 434,532       | ~33.4 s    |
-| demoproj.DSU     | DSU    | 779,615     | 778,847       | ~59.8 s    |
-| 99-003.DX4       | DX4    | 1,717,937   | 1,717,169     | ~131.9 s   |
-| DL-USA.DX4       | DX4    | 1,685,027   | 1,684,259     | ~129.3 s   |
-| 99-Stainz.DS6    | DS6    | 3,053,350   | 3,051,775     | ~234.4 s   |
-| 99-UNI-1.DS6     | DS6    | 3,151,731   | 3,150,156     | ~241.9 s   |
-| DL-Mogul-Holz.DS6| DS6    | 2,961,857   | 2,960,282     | ~227.3 s   |
+| File             | Format | Magic | Size (bytes) | Audio (bytes) | Duration   |
+|------------------|--------|-------|-------------|---------------|------------|
+| Dl-001.dsd       | DSD    | DD 33 | 518,098     | 517,330       | ~39.7 s    |
+| Dl-005.dsd       | DSD    | DD 33 | 464,482     | 463,714       | ~35.6 s    |
+| DL-24-64-86.DSD  | DSD    | DD 33 | 523,610     | 522,842       | ~40.2 s    |
+| Sb-alt.dsd       | DSD    | E1 33 | 285,896     | 285,128       | ~21.9 s    |
+| Sb-neu.dsd       | DSD    | E1 33 | 456,368     | 455,600       | ~35.0 s    |
+| DL-UNI1.DS3      | DS3    | DD 33 | 651,982     | 651,214       | ~50.0 s    |
+| 99-Spreewald.DS3 | DS3    | DD 33 | 601,894     | 601,126       | ~46.2 s    |
+| DL-USA-Holz.DS3  | DS3    | DD 33 | 563,228     | 562,460       | ~43.2 s    |
+| SB-ALT.DS3       | DS3    | E1 33 | 435,300     | 434,532       | ~33.4 s    |
+| demoproj.DSU     | DSU    | DD 33 | 779,615     | 778,847       | ~59.8 s    |
+| 99-003.DX4       | DX4    | DD 33 | 1,717,937   | 1,717,169     | ~131.9 s   |
+| DL-USA.DX4       | DX4    | DD 33 | 1,685,027   | 1,684,259     | ~129.3 s   |
+| 99-Stainz.DS6    | DS6    | DD 33 | 3,053,350   | 3,051,775     | ~234.4 s   |
+| 99-UNI-1.DS6     | DS6    | DD 33 | 3,151,731   | 3,150,156     | ~241.9 s   |
+| DL-Mogul-Holz.DS6| DS6    | DD 33 | 2,961,857   | 2,960,282     | ~227.3 s   |
 
 Duration = audio bytes / 13,021 Hz.
 DS6 audio offset: 0x627. DS3/DX4 audio offset: 0x300.
@@ -59,7 +66,7 @@ DS6 audio offset: 0x627. DS3/DX4 audio offset: 0x300.
 
 | Offset | Length | DS3                                             | DX4                                           |
 |--------|--------|-------------------------------------------------|-----------------------------------------------|
-| 0x000  | 2      | Magic number: `DD 33`                           | (same)                                        |
+| 0x000  | 2      | Magic number: `DD 33` or `E1 33`                | (same)                                        |
 | 0x002  | 2      | Format tag: `FF FF`                             | (same)                                        |
 | 0x004  | 144    | Primary track index (48 × 3-byte entries)       | (same)                                        |
 | 0x094  | 22     | Padding (`FF`)                                  | Middle track index, part 1                    |
@@ -102,7 +109,7 @@ tables. The entire file — header and audio — is XOR-encoded (see
 
 | Offset | Length | Description                                        |
 |--------|--------|----------------------------------------------------|
-| 0x000  | 2      | Magic number: `DD 33`                              |
+| 0x000  | 2      | Magic number: `DD 33` or `E1 33`                   |
 | 0x002  | 2      | Format tag: `25 05`                                |
 | 0x004  | 4      | Fixed metadata (decoded: `00 2B 06 00`)            |
 | 0x008  | 162    | Primary track index (54 × 3-byte LE24, XOR)        |
@@ -176,11 +183,15 @@ of the encoding, not meaningful data.
 
 ```
 Offset  Bytes
-0x000   DD 33
+0x000   DD 33     — Dietz product line (DL-*)
+0x000   E1 33     — Uhlenbrock product line (SB-*)
 ```
 
-Present in all IntelliSound formats. Identifies the file as a
-Dietz/Uhlenbrock sound file.
+The second byte is always `0x33` (raw). The first byte identifies the
+product line: `0xDD` for Dietz and `0xE1` for Uhlenbrock. Both values
+are valid IntelliSound magic and indicate the same file format family.
+
+Present in all IntelliSound formats (.DSD, .DS3, .DS4, .DSU, .DX4, .DS6).
 
 ## Format tag (offset 0x002)
 
@@ -633,6 +644,9 @@ This specification was determined by:
 - Intelli Sound Creator manual (English, 2015) — sound event to entry
   mapping, CV parameter documentation, steam chuff layout, manual
   transmission gear mapping
+- Hex analysis of five DSD files (Dl-001, Dl-005, DL-24-64-86, Sb-alt,
+  Sb-neu) confirming DSD is structurally identical to DS3 and that magic
+  byte `E1` identifies Uhlenbrock (SB-*) product line
 
 ---
 
