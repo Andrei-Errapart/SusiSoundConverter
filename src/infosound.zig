@@ -35,6 +35,24 @@ const DS6_EXT3_COUNT: usize = 16; // 8 pairs
 const DS6_NAME_OFF: usize = 0x526;
 const DS6_NAME_LEN: usize = 16;
 
+// DHE (X-clusive PROFI / Profi Soundbox) constants
+const DHE_HEADER_SIZE: usize = 0x2000;
+const DHE_NAME_OFF: usize = 0x02C;
+const DHE_NAME_LEN: usize = 16;
+const DHE_META_OFF: usize = 0x004;
+const DHE_CONFIG1_OFF: usize = 0x080;
+const DHE_CONFIG1_LEN: usize = 20;
+const DHE_CONFIG2_OFF: usize = 0x0C0;
+const DHE_CONFIG2_LEN: usize = 33;
+const DHE_PERSOUND_OFF: usize = 0x400;
+const DHE_PERSOUND_LEN: usize = 360;
+const DHE_TABLE_OFF: usize = 0x0800;
+const DHE_TABLE_END: usize = 0x2000;
+const DHE_RECORD_SIZE: usize = 11;
+const DHE_MAX_RECORDS: usize = 560;
+const DHE_SAMPLE_RATE: f64 = 22050.0;
+const FLASH_128MBIT: usize = 16 * 1024 * 1024;
+
 const ExportCtx = struct {
     io: Io,
     arena: Allocator,
@@ -155,6 +173,64 @@ fn writeWavFile(ctx: *const ExportCtx, filename: []const u8, audio_start: usize,
     try ctx.w.print("  -> {s} ({d} bytes, {s})\n", .{ filename, audio_size, std.mem.trimEnd(u8, &dur, " ") });
 }
 
+// --- DHE helpers (16-bit, 22050 Hz, raw audio) ---
+
+fn fmtDurationDhe(byte_count: usize) [12]u8 {
+    const samples = byte_count / 2; // 16-bit
+    const ms_total = (samples * 1000 + @as(usize, @intFromFloat(DHE_SAMPLE_RATE)) / 2) /
+        @as(usize, @intFromFloat(DHE_SAMPLE_RATE));
+    const secs = ms_total / 1000;
+    const ms = ms_total % 1000;
+    var buf: [12]u8 = .{' '} ** 12;
+    _ = std.fmt.bufPrint(&buf, "{d}.{d:0>3}s", .{ secs, ms }) catch {};
+    return buf;
+}
+
+/// Write a 44-byte WAV header for 16-bit signed mono at 22050 Hz.
+fn writeDheWavHeader(wav: []u8, audio_size: usize) void {
+    const wav_total: u32 = @intCast(44 + audio_size);
+    @memcpy(wav[0..4], "RIFF");
+    std.mem.writeInt(u32, wav[4..][0..4], wav_total - 8, .little);
+    @memcpy(wav[8..12], "WAVE");
+    @memcpy(wav[12..16], "fmt ");
+    std.mem.writeInt(u32, wav[16..][0..4], 16, .little); // fmt chunk size
+    std.mem.writeInt(u16, wav[20..][0..2], 1, .little); // PCM
+    std.mem.writeInt(u16, wav[22..][0..2], 1, .little); // mono
+    const sr: u32 = @intFromFloat(DHE_SAMPLE_RATE);
+    std.mem.writeInt(u32, wav[24..][0..4], sr, .little); // sample rate
+    std.mem.writeInt(u32, wav[28..][0..4], sr * 2, .little); // byte rate
+    std.mem.writeInt(u16, wav[32..][0..2], 2, .little); // block align
+    std.mem.writeInt(u16, wav[34..][0..2], 16, .little); // bits per sample
+    @memcpy(wav[36..40], "data");
+    std.mem.writeInt(u32, wav[40..][0..4], @intCast(audio_size), .little);
+}
+
+/// Write a WAV file: XOR-decode bytes, then convert unsigned 16-bit to signed.
+fn writeDheWavFile(ctx: *const ExportCtx, filename: []const u8, audio_start: usize, audio_size: usize) !void {
+    if (audio_size == 0) return;
+    if (audio_start + audio_size > ctx.data.len) return;
+
+    const wav_total: usize = 44 + audio_size;
+    const wav = try ctx.arena.alloc(u8, wav_total);
+
+    writeDheWavHeader(wav, audio_size);
+
+    // XOR-decode each byte, then flip MSB of high bytes (unsigned → signed)
+    const src = ctx.data[audio_start..][0..audio_size];
+    for (0..audio_size) |i| {
+        var decoded = src[i] ^ @as(u8, @truncate(audio_start + i));
+        if (i % 2 == 1) decoded ^= 0x80; // high byte: unsigned → signed
+        wav[44 + i] = decoded;
+    }
+
+    Dir.writeFile(.cwd(), ctx.io, .{ .sub_path = filename, .data = wav }) catch |err| {
+        try ctx.w.print("  Error writing {s}: {s}\n", .{ filename, @errorName(err) });
+        return;
+    };
+    const dur = fmtDurationDhe(audio_size);
+    try ctx.w.print("  -> {s} ({d} bytes, {s})\n", .{ filename, audio_size, std.mem.trimEnd(u8, &dur, " ") });
+}
+
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     const io = init.io;
@@ -197,8 +273,18 @@ fn dumpFile(arena: Allocator, io: Io, w: *Io.Writer, path: []const u8, export_wa
     }
 
     // Magic: byte[1] must be 0x33, byte[0] is 0xDD (Dietz) or 0xE1 (Uhlenbrock)
+    // DHE (X-clusive PROFI): magic is 0x22 0x57
     try w.print("Magic: {X:0>2} {X:0>2}", .{ data[0], data[1] });
-    if ((data[0] == 0xDD or data[0] == 0xE1) and data[1] == 0x33) {
+    if (data[0] == 0x22 and data[1] == 0x57) {
+        try w.print(" (DHE / X-clusive PROFI)\n", .{});
+        const base_name = fspath.stem(fspath.basename(path));
+        var exp_val: ExportCtx = undefined;
+        const exp: ?*const ExportCtx = if (export_wav) blk: {
+            exp_val = .{ .io = io, .arena = arena, .data = data, .base_name = base_name, .w = w };
+            break :blk &exp_val;
+        } else null;
+        return dumpDHEFile(arena, w, data, exp);
+    } else if ((data[0] == 0xDD or data[0] == 0xE1) and data[1] == 0x33) {
         try w.print(" (valid IntelliSound)\n", .{});
     } else if (data[0] == 0x00 and data[1] == 0xFF) {
         try w.print(" (encrypted — not supported)\n\n", .{});
@@ -413,6 +499,189 @@ fn dumpDS6File(arena: Allocator, w: *Io.Writer, data: []const u8, exp: ?*const E
     try w.print("\n--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---\n", .{});
     for (0..CONFIG_LEN) |i| {
         const off = CONFIG_OFF + i;
+        const decoded = data[off] ^ @as(u8, @truncate(off));
+        if (i > 0 and i % 16 == 0) try w.print("\n", .{});
+        if (i % 16 == 0) try w.print("  0x{X:0>3}:", .{off});
+        try w.print(" {X:0>2}", .{decoded});
+    }
+    try w.print("\n\n", .{});
+}
+
+fn dumpDHEFile(_: Allocator, w: *Io.Writer, data: []const u8, exp: ?*const ExportCtx) !void {
+    if (data.len < DHE_HEADER_SIZE) {
+        try w.print("Error: file too small for DHE header (need {d} bytes)\n\n", .{DHE_HEADER_SIZE});
+        return;
+    }
+
+    const audio_len = data.len - DHE_HEADER_SIZE;
+    const duration_s = @as(f64, @floatFromInt(audio_len / 2)) / DHE_SAMPLE_RATE;
+    try w.print("Audio region: 0x{X:0>6}–0x{X:0>6} ({d} bytes, {d:.1}s at 22050 Hz 16-bit)\n", .{
+        @as(usize, DHE_HEADER_SIZE), data.len, audio_len, duration_s,
+    });
+    try w.print("Flash usage: {d} / {d} bytes ({d} free)\n", .{
+        data.len, FLASH_128MBIT, FLASH_128MBIT - @min(data.len, FLASH_128MBIT),
+    });
+
+    // Embedded sound name (XOR-decoded ASCII at 0x02C)
+    var name_buf: [DHE_NAME_LEN]u8 = undefined;
+    for (0..DHE_NAME_LEN) |i| {
+        const off = DHE_NAME_OFF + i;
+        name_buf[i] = data[off] ^ @as(u8, @truncate(off));
+    }
+    const name = std.mem.trimEnd(u8, &name_buf, " ");
+    try w.print("Sound name: \"{s}\"\n", .{name});
+
+    // File metadata at 0x004 (XOR-decoded)
+    const loco_type = data[DHE_META_OFF + 2] ^ @as(u8, @truncate(DHE_META_OFF + 2));
+    const sound_param = data[DHE_META_OFF + 4] ^ @as(u8, @truncate(DHE_META_OFF + 4));
+    const loco_name: []const u8 = switch (loco_type) {
+        1 => "Steam",
+        2 => "Electric/Tram",
+        4 => "Diesel",
+        32 => "Railbus",
+        else => "Unknown",
+    };
+    try w.print("Loco type: {d} ({s}), sound param: {d}\n", .{ loco_type, loco_name, sound_param });
+
+    // Parse track index table at 0x800 (11-byte records, XOR-encoded)
+    var rec_a: [DHE_MAX_RECORDS]u24 = undefined;
+    var rec_b: [DHE_MAX_RECORDS]u24 = undefined;
+    var rec_c: [DHE_MAX_RECORDS]u24 = undefined;
+    var rec_f1: [DHE_MAX_RECORDS]u8 = undefined;
+    var rec_f2: [DHE_MAX_RECORDS]u8 = undefined;
+    var n_records: usize = 0;
+
+    for (0..DHE_MAX_RECORDS) |i| {
+        const off = DHE_TABLE_OFF + i * DHE_RECORD_SIZE;
+        if (off + DHE_RECORD_SIZE > @min(DHE_TABLE_END, data.len)) break;
+        // Padding: all raw bytes are 0xFF
+        const rec_bytes = data[off..][0..DHE_RECORD_SIZE];
+        var all_ff = true;
+        for (rec_bytes) |b| {
+            if (b != 0xFF) { all_ff = false; break; }
+        }
+        if (all_ff) break;
+
+        rec_a[i] = xorDecode(data[off..][0..3], off);
+        rec_b[i] = xorDecode(data[off + 3 ..][0..3], off + 3);
+        rec_c[i] = xorDecode(data[off + 6 ..][0..3], off + 6);
+        rec_f1[i] = data[off + 9] ^ @as(u8, @truncate(off + 9));
+        rec_f2[i] = data[off + 10] ^ @as(u8, @truncate(off + 10));
+        n_records += 1;
+    }
+
+    // Build sorted list of unique A addresses in audio range for size computation
+    var sorted: [DHE_MAX_RECORDS]usize = undefined;
+    var n_sorted: usize = 0;
+    for (0..n_records) |i| {
+        const addr = @as(usize, rec_a[i]);
+        if (addr >= DHE_HEADER_SIZE and addr < data.len) {
+            var dup = false;
+            for (sorted[0..n_sorted]) |s| {
+                if (s == addr) { dup = true; break; }
+            }
+            if (!dup) {
+                sorted[n_sorted] = addr;
+                n_sorted += 1;
+            }
+        }
+    }
+    std.sort.pdq(usize, sorted[0..n_sorted], {}, std.sort.asc(usize));
+
+    try w.print("\n--- Track index (0x800, 11-byte records) ---\n", .{});
+    try w.print("Records: {d}, unique positions: {d}\n\n", .{ n_records, n_sorted });
+
+    try w.print("  {s:>5}  {s:>8}  {s:>8}  {s:>8}  {s:>5}  {s:>8}  {s:>8}  {s:>8}\n", .{
+        "Rec", "Addr A", "Addr B", "Addr C", "Flags", "Size", "Duration", "CRC32",
+    });
+    try w.print("  {s:->5}  {s:->8}  {s:->8}  {s:->8}  {s:->5}  {s:->8}  {s:->8}  {s:->8}\n", .{
+        "", "", "", "", "", "", "", "",
+    });
+
+    for (0..n_records) |i| {
+        const a = rec_a[i];
+        const b = rec_b[i];
+        const c = rec_c[i];
+        const f1 = rec_f1[i];
+        const f2 = rec_f2[i];
+        const addr = @as(usize, a);
+
+        // Compute size from sorted unique addresses
+        const size: usize = blk: {
+            if (addr < DHE_HEADER_SIZE or addr >= data.len) break :blk 0;
+            for (sorted[0..n_sorted]) |s| {
+                if (s > addr) break :blk s - addr;
+            }
+            break :blk data.len - addr;
+        };
+
+        if (size == 0) {
+            try w.print("  {d:>5}  0x{X:0>6}  0x{X:0>6}  0x{X:0>6}  {X:0>2} {X:0>2}  {s:>8}  {s:>8}  {s:>8}\n", .{
+                i, a, b, c, f1, f2, "-", "-", "-",
+            });
+        } else {
+            const dur = fmtDurationDhe(size);
+            const crc = Crc32.hash(data[addr..][0..size]);
+            try w.print("  {d:>5}  0x{X:0>6}  0x{X:0>6}  0x{X:0>6}  {X:0>2} {X:0>2}  {d:>8}  {s}  {X:0>8}\n", .{
+                i, a, b, c, f1, f2, size, dur, crc,
+            });
+        }
+
+        // Export WAV (only first occurrence of each unique A address)
+        if (exp) |ctx| {
+            if (size > 0) {
+                var already = false;
+                for (rec_a[0..i]) |prev_a| {
+                    if (prev_a == a) { already = true; break; }
+                }
+                if (!already) {
+                    const filename = std.fmt.allocPrint(ctx.arena, "{s}_d{d:0>3}.wav", .{
+                        ctx.base_name, i,
+                    }) catch continue;
+                    writeDheWavFile(ctx, filename, addr, size) catch {};
+                }
+            }
+        }
+    }
+
+    // Compute total unique audio coverage from sorted addresses
+    var total_audio: usize = 0;
+    for (0..n_sorted) |i| {
+        const next = if (i + 1 < n_sorted) sorted[i + 1] else data.len;
+        total_audio += next - sorted[i];
+    }
+    const coverage_pct = if (audio_len > 0)
+        @as(f64, @floatFromInt(total_audio)) * 100.0 / @as(f64, @floatFromInt(audio_len))
+    else
+        0.0;
+    try w.print("\nUnique tracks: {d}, audio coverage: {d} / {d} bytes ({d:.1}%)\n", .{
+        n_sorted, total_audio, audio_len, coverage_pct,
+    });
+
+    // Configuration block 1 (0x080, XOR-decoded)
+    try w.print("\n--- Configuration 1 (0x080, {d} bytes, XOR-decoded) ---\n", .{DHE_CONFIG1_LEN});
+    for (0..DHE_CONFIG1_LEN) |i| {
+        const off = DHE_CONFIG1_OFF + i;
+        const decoded = data[off] ^ @as(u8, @truncate(off));
+        if (i > 0 and i % 16 == 0) try w.print("\n", .{});
+        if (i % 16 == 0) try w.print("  0x{X:0>3}:", .{off});
+        try w.print(" {X:0>2}", .{decoded});
+    }
+
+    // Configuration block 2 (0x0C0, XOR-decoded)
+    try w.print("\n--- Configuration 2 (0x0C0, {d} bytes, XOR-decoded) ---\n", .{DHE_CONFIG2_LEN});
+    for (0..DHE_CONFIG2_LEN) |i| {
+        const off = DHE_CONFIG2_OFF + i;
+        const decoded = data[off] ^ @as(u8, @truncate(off));
+        if (i > 0 and i % 16 == 0) try w.print("\n", .{});
+        if (i % 16 == 0) try w.print("  0x{X:0>3}:", .{off});
+        try w.print(" {X:0>2}", .{decoded});
+    }
+
+    // Per-sound configuration (0x400, XOR-decoded)
+    try w.print("\n--- Per-sound config (0x400, {d} bytes, XOR-decoded) ---\n", .{DHE_PERSOUND_LEN});
+    for (0..DHE_PERSOUND_LEN) |i| {
+        const off = DHE_PERSOUND_OFF + i;
         const decoded = data[off] ^ @as(u8, @truncate(off));
         if (i > 0 and i % 16 == 0) try w.print("\n", .{});
         if (i % 16 == 0) try w.print("  0x{X:0>3}:", .{off});
