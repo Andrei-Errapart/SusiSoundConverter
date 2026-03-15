@@ -27,6 +27,7 @@ Uhlenbrock (SB-*).
 | .DSU      | 8-bit     | IS4 only       | DS3 + user custom sounds (200–203)   |
 | .DX4      | 8-bit     | X-clusive-S V4 | DS3 + middle track index (9 pairs)   |
 | .DS6      | 8-bit     | IS6 only       | Extended, 640s, 40+ sounds           |
+| .DHE      | 16-bit    | X-clusive PROFI, Profi Soundbox | 16-bit 22050 Hz, 128 Mbit flash |
 
 > **Note on DS6 "16-bit"**: The IS6 manual advertises "16 Bit Auflösung"
 > and "Noise-Shaping-Technology". In practice, DS6 files store 8-bit
@@ -647,6 +648,12 @@ This specification was determined by:
 - Hex analysis of five DSD files (Dl-001, Dl-005, DL-24-64-86, Sb-alt,
   Sb-neu) confirming DSD is structurally identical to DS3 and that magic
   byte `E1` identifies Uhlenbrock (SB-*) product line
+- Hex analysis of 8 DHE files (3 steam, 1 electric, 2 tram, 2 diesel)
+  confirming 16-bit audio, 0x2000 header size, 11-byte track records at 0x800
+- Cross-referencing the Dietz X-clusive PROFI and Profi Soundbox manuals
+- Listening test with WAV variants confirming audio is XOR-encoded unsigned
+  16-bit PCM (shift-xor variant correct)
+- Cross-file comparison of all DHE header and track table entries
 
 ---
 
@@ -790,7 +797,319 @@ though 3 gears are typical.
 
 ---
 
+## DHE format (X-clusive PROFI / Profi Soundbox)
+
+DHE files are used by the X-clusive PROFI-SOUND and Profi Soundbox products.
+They use a different audio encoding from the IntelliSound family: **16-bit
+signed PCM at 22,050 Hz** (mono), stored in an XOR-scrambled flat flash image.
+
+The X-clusive PROFI supports 9 simultaneous playback channels. Sound files
+cannot be updated by the user — they are factory-programmed via the Dietz
+SUSI-PRU programmer.
+
+### Reference files
+
+| File              | Size (bytes) | Audio (bytes) | Duration | Loco type  | Pairs |
+|-------------------|-------------|---------------|----------|------------|-------|
+| 99-UNI.DHE        | 16,409,114  | 16,400,922    | ~372.1 s | Steam (1)  | 35    |
+| DL-095.DHE        | 16,523,550  | 16,515,358    | ~374.7 s | Steam (1)  | 33    |
+| DL-Challenger.DHE | 13,883,514  | 13,875,322    | ~314.7 s | Steam (1)  | 32    |
+| EL-662.DHE        | 16,250,776  | 16,242,584    | ~368.5 s | Elec. (2)  | 18    |
+| Strab-Uni-1.DHE   | 14,409,880  | 14,401,688    | ~326.6 s | Tram  (2)  | 18    |
+| Strab-Uni-2.DHE   | 14,425,844  | 14,417,652    | ~327.0 s | Tram  (2)  | 18    |
+| VT-SKL.DHE        | 15,616,780  | 15,608,588    | ~354.1 s | Diesel (4) | 20    |
+| VT-WSB.DHE        | 16,412,562  | 16,404,370    | ~372.2 s | Rail. (32) | 17    |
+
+Duration = (file_size − 0x2000) / 2 / 22,050 Hz.
+
+### Overall layout
+
+| Offset  | Length   | Description                                          |
+|---------|----------|------------------------------------------------------|
+| 0x0000  | 2        | Magic number: `22 57` (raw)                          |
+| 0x0002  | 2        | Format tag: `FF FF`                                  |
+| 0x0004  | 10       | File metadata (XOR-encoded)                          |
+| 0x000E  | 30       | Padding (`FF`)                                       |
+| 0x002C  | 16       | Embedded sound name (ASCII, space-padded, XOR)       |
+| 0x003C  | 8        | Post-name metadata (XOR-encoded)                     |
+| 0x0044  | 60       | Padding (`FF`)                                       |
+| 0x0080  | 20       | Configuration block 1 (XOR-encoded)                  |
+| 0x0094  | 44       | Padding (`FF`)                                       |
+| 0x00C0  | 33       | Configuration block 2 (XOR-encoded)                  |
+| 0x00E1  | 31       | Padding (`FF`)                                       |
+| 0x0100  | variable | Legacy index (3-byte XOR entries, same as DS3)       |
+| variable| to 0x3FF | Padding (`FF`)                                       |
+| 0x0400  | 360      | Per-sound configuration (XOR-encoded)                |
+| 0x0568  | 664      | Padding (`FF`)                                       |
+| 0x0800  | variable | Track index table (11-byte records, XOR-encoded)     |
+| variable| to 0x1FFF| Padding (`FF`)                                       |
+| 0x2000  | to EOF   | Audio data (16-bit signed PCM, XOR-encoded)          |
+
+Total header size: **8,192 bytes** (0x2000).
+
+### XOR scrambling
+
+The same byte-offset XOR scheme as the IntelliSound family is used (see
+[XOR scrambling](#xor-scrambling) above). Both the header and audio data
+are XOR-encoded.
+
+To produce playable audio from a DHE file:
+1. XOR-decode each byte: `decoded = raw[offset] ^ (offset & 0xFF)`
+2. Convert from unsigned to signed 16-bit: XOR each sample with 0x8000
+   (equivalently, flip bit 7 of every high byte in LE representation)
+
+### File metadata (offset 0x004)
+
+**10 bytes, XOR-encoded.**
+
+| Offset | Size | Description                        | Values observed            |
+|--------|------|------------------------------------|----------------------------|
+| 0x004  | 1    | Constant                           | Always 16 (0x10)           |
+| 0x005  | 1    | Constant                           | Always 32 (0x20)           |
+| 0x006  | 1    | Locomotive type                    | See table below            |
+| 0x007  | 1    | Zero padding                       | Always 0                   |
+| 0x008  | 1    | Sound parameter                    | 45 (steam) or 15 (others)  |
+| 0x009  | 1    | Zero padding                       | Always 0                   |
+| 0x00A  | 1    | Constant                           | Always 25 (0x19)           |
+| 0x00B  | 1    | Zero padding                       | Always 0                   |
+| 0x00C  | 1    | File-specific parameter            | Varies (8–208)             |
+| 0x00D  | 1    | File-specific parameter            | Varies (7–11)              |
+
+#### Locomotive type (offset 0x006)
+
+| Value | Type                           | Example files                     |
+|-------|--------------------------------|-----------------------------------|
+| 1     | Steam locomotive               | 99-UNI, DL-095, DL-Challenger    |
+| 2     | Electric locomotive / Tram     | EL-662, Strab-Uni-1, Strab-Uni-2 |
+| 4     | Diesel railcar                 | VT-SKL                           |
+| 32    | Railbus                        | VT-WSB ("Wismarer")              |
+
+### Embedded sound name (offset 0x02C)
+
+**16 bytes of ASCII text, XOR-encoded, space-padded (0x20).**
+
+The sound project name, e.g. `99-UNI-1`, `DL-Challenger`, `EL-662`.
+The name does not necessarily match the filename exactly.
+
+### Post-name metadata (offset 0x03C)
+
+**8 bytes, XOR-encoded.**
+
+| Byte | Description           | Values observed                        |
+|------|-----------------------|----------------------------------------|
+| +0   | File-specific         | Varies widely                          |
+| +1   | File-specific         | Varies widely                          |
+| +2   | File-specific         | Varies widely                          |
+| +3   | Constant              | Always 0x00                            |
+| +4   | Sub-type indicator    | 0x10 (steam) or 0x12 (non-steam)      |
+| +5   | Sub-version?          | 2, 3, or 5                             |
+| +6   | Unknown               | 0x0A or 0x0B                           |
+| +7   | Constant              | Always 0xBC (188)                      |
+
+### Configuration blocks (0x080, 0x0C0)
+
+These XOR-encoded regions are **identical across all examined files**,
+suggesting they contain factory-default CV values or template configuration.
+
+**Configuration block 1 (offset 0x080, 20 bytes)**: decoded values
+`64 78 AA 40 02 1E 14 14` (as decimal: 100, 120, 170, 64, 2, 30, 20, 20)
+followed by padding. Likely corresponds to sound parameter CVs (chuff
+timing, brake thresholds, load detection, etc.).
+
+**Configuration block 2 (offset 0x0C0, 33 bytes)**: decoded values show a
+repeating pattern of `64` (100) with interspersed values: 15, 40, 75, 105,
+127. Likely corresponds to per-sound volume or dynamic range parameters.
+
+### Track index table (offset 0x800)
+
+The real track index is at **0x800** in the XOR-decoded header, containing
+**11-byte records**. The legacy table at 0x100 uses 3-byte entries (like
+DS3) but its decoded addresses point below 0x2000 and are incorrect.
+
+#### Record format (11 bytes)
+
+```
+Bytes 0–2:  Address A (LE24) — primary start address
+Bytes 3–5:  Address B (LE24) — loop-back address (= A when no loop offset)
+Bytes 6–8:  Address C (LE24) — end/section address (= A in most records)
+Byte  9:    Flag 1
+Byte 10:    Flag 2
+```
+
+#### Flag byte 9 values
+
+| Value | Meaning                                                    |
+|-------|------------------------------------------------------------|
+| 0x00  | Paired entry (typically followed by another record at A+2) |
+| 0xFF  | Standalone or end-of-pair                                  |
+| 0x04  | Section start (C ≠ A, C may indicate section end address)  |
+| 0x03  | Similar to 0x04 (observed with C ≠ A)                      |
+
+#### Pairing and sentinel runs
+
+Records often come in pairs where the second record's address A is the
+first's A + 2 (one sample offset). Some track positions have runs of
+many consecutive +2 entries (sentinel padding), similar to the
+IntelliSound extended table sentinel pattern.
+
+In 99-UNI.DHE the table contains 359 real records (68 unique track
+positions) before padding. Padding consists of descending-byte sequences
+resulting from XOR-decoding raw 0xFF fill bytes.
+
+When B ≠ A, B is a **loop-back address** within the track (the sound
+plays from A to the end, then loops back to B). When C ≠ A (with flag
+0x04 or 0x03), C appears to indicate a section end or related address.
+
+#### Table size by locomotive type
+
+| Locomotive type     | Pairs observed | Examples                     |
+|---------------------|----------------|------------------------------|
+| Steam               | 32–35          | 99-UNI (35), DL-095 (33)    |
+| Electric / Tram     | 18             | EL-662, Strab-Uni-1/2       |
+| Diesel railcar      | 17–20          | VT-WSB (17), VT-SKL (20)    |
+
+#### Address alignment
+
+Track addresses are **byte-aligned** (not 16-bit sample-aligned). Across
+8 files, approximately 25% of addresses are odd. The playback firmware
+assembles 16-bit samples starting from any byte boundary.
+
+### Per-sound configuration (offset 0x400)
+
+**360 bytes (0x400–0x567), XOR-encoded.**
+
+After decoding, this region is mostly zeros with scattered non-zero bytes.
+The non-zero values are small (typically 0–127), consistent with CV-like
+parameters (volume levels, function assignments, or playback flags).
+
+Some values match known CV defaults from the manual (e.g., 31 appears
+frequently, matching function key assignments; 13 matches CV 935 config).
+This region differs slightly between files, suggesting per-sound-project
+configuration rather than global defaults.
+
+### Audio data
+
+| Property    | Value                          |
+|-------------|--------------------------------|
+| Format      | PCM, signed                    |
+| Bit depth   | 16 bits per sample             |
+| Channels    | 1 (mono)                       |
+| Sample rate | **22,050 Hz**                  |
+| Byte order  | Little-endian                  |
+
+The audio data is XOR-scrambled using the same byte-offset scheme as the
+IntelliSound family. After XOR decoding, the raw 16-bit unsigned samples
+must be sign-shifted (XOR each sample's high byte with 0x80) to obtain
+standard signed PCM.
+
+Sounds are stored contiguously in the audio region. Track boundaries are
+determined solely from the track index table at 0x800.
+
+### Flash capacity
+
+| Flash chip   | Capacity     | Capacity (bytes) |
+|--------------|--------------|------------------|
+| 128 Mbit     | 16 MB        | 16,777,216       |
+
+At 22,050 Hz 16-bit mono, maximum recording duration is ~380 s.
+
+### DHE sound numbering
+
+From the X-clusive PROFI and Profi Soundbox manuals:
+
+| Number   | Sound (Steam)                    | Sound (Electric)     | Sound (Diesel)       |
+|----------|----------------------------------|----------------------|----------------------|
+| 1        | Whistle 1                        | Whistle 1            | Whistle 1            |
+| 2        | Whistle 2                        | Whistle 2            | Whistle 2            |
+| 3        | Announcement "all aboard"        | (same)               | (same)               |
+| 4        | Discoupler sound                 | (same)               | (same)               |
+| 5        | Bell                             | (same)               | (same)               |
+| 6        | Station announcement             | (same)               | (same)               |
+| 7        | Unlock brakes                    | (same)               | (same)               |
+| 8        | Light switch                     | (same)               | (same)               |
+| 9        | Main power switch                | (same)               | (same)               |
+| 10       | Short pea-whistle                | (same)               | (same)               |
+| 11       | Long pea-whistle                 | (same)               | (same)               |
+| 12       | Blower                           | Switch               | Auxiliary diesel     |
+| 13       | Injector                         | Pantograph           |                      |
+| 14       | Coal-shovelling                  | Pantograph           |                      |
+| 15       | Air pump                         | Air pump             | Air pump             |
+| 16       | Blow off                         | Compressed air       |                      |
+| 17       | Fire grate                       | Webasto heater       |                      |
+| 18       | Switching radio                  | (same)               |                      |
+| 19       | Handbrake                        | (same)               |                      |
+| 20       | Compressed air                   | Door sound           | Door sound           |
+| 21–29    | Various per-type sounds          |                      |                      |
+| 30–39    | Additional announcements         |                      |                      |
+| 40–47    | Additional whistles              |                      |                      |
+| 48–49    | Echoed whistle 1                 |                      |                      |
+| 50–59    | Additional bells                 |                      |                      |
+| 60       | Sine test tone                   |                      |                      |
+| 61       | Indusi release                   |                      |                      |
+| 62       | Cog-wheel entry                  |                      |                      |
+| 63       | Snow-blower                      |                      |                      |
+| 70       | Fast air pump                    |                      |                      |
+| 71       | Work end                         |                      |                      |
+| 72       | Volume change sound              |                      |                      |
+| 73       | Triller whistle                  |                      |                      |
+| 75       |                                  |                      | Full throttle idle   |
+| 78–83    | Additional switching radio       |                      |                      |
+| 84       | Door closing                     |                      |                      |
+| 90       | Curve-squeaking                  |                      |                      |
+| 95       | Brake announcement (train)       |                      |                      |
+| 96       | Brake announcement (loco)        |                      |                      |
+| 97       | Short whistle (automatic)        |                      |                      |
+| 98       | Fan (automatic)                  |                      |                      |
+| 99       | Discoupler + mode switch         |                      |                      |
+| 101      | Standing / starting sound        |                      |                      |
+| 102      | Turbo / 2nd motor                |                      |                      |
+| 110      | Announcement with auto-switch    |                      |                      |
+| 111–112  | Special activity sounds          |                      |                      |
+
+Not all sound numbers are populated in every project. Each project
+includes a "wasischwas" document listing its specific sound allocation.
+
+### CV structure
+
+The X-clusive PROFI uses SUSI CVs organized in banks (selected via CV 1021):
+
+| Bank | CV 1021 | Purpose                                        |
+|------|---------|------------------------------------------------|
+| 0    | 0       | Function-to-sound mapping (CV 903–931, 933–939)|
+| 1    | 1       | Function-mapping + inputs (CV 900a–939a)       |
+| 2    | 2       | Sound parameters I (CV 935b–939b)              |
+| 3    | 3       | Sound parameters II (CV 901c–939c)             |
+| 4    | 4       | Smoke unit parameters (CV 939d)                |
+| 5    | 5       | Volumes sounds 1–39 (CV 900e–939e)             |
+| 6    | 6       | Volumes sounds 40–79 (CV 900f–939f)            |
+| 7    | 7       | Volumes sounds 80–99 (CV 900g–922g)            |
+
+CV 897 selects the SUSI address range (1–3).
+CV 900 = 115 (manufacturer ID = DIETZ), read-only.
+CV 900 = 243 triggers a factory reset.
+
+### Differences from IntelliSound (DS3/DS6)
+
+| Feature          | IntelliSound DS3/DS6        | X-clusive PROFI DHE         |
+|------------------|-----------------------------|-----------------------------|
+| Magic            | `DD 33` or `E1 33`          | `22 57`                     |
+| Bit depth        | 8-bit unsigned PCM          | 16-bit unsigned PCM         |
+| Sample rate      | 13,021 Hz                   | 22,050 Hz                   |
+| Flash            | 32/64 Mbit (4/8 MB)         | 128 Mbit (16 MB)            |
+| Max duration     | ~322 s / ~640 s             | ~380 s                      |
+| Channels         | 1–5 simultaneous            | Up to 9 simultaneous        |
+| Header size      | 0x300 (DS3) / 0x627 (DS6)  | 0x2000                      |
+| Track index      | 3-byte entries (multiple tables) | 11-byte records at 0x800 |
+| Sound name       | DS6 only, at 0x526          | All files, at 0x02C         |
+| Audio start      | 0x300 (DS3) / 0x627 (DS6)  | 0x2000                      |
+| XOR on audio     | Yes (all formats)           | Yes (same scheme)           |
+| User sounds      | DSU: raw, not XOR-encoded   | N/A (not user-programmable) |
+
+---
+
 ## Open questions
+
+### IntelliSound (DS3/DX4/DSU/DS6)
 
 1. **Configuration byte-to-CV mapping**: The exact mapping from the 50
    decoded bytes at 0xCE–0xFF to the SUSI CV numbers (with 'a', 'b', 'c'
@@ -806,3 +1125,22 @@ though 3 gears are typical.
 3. **DS6 metadata region (0x536–0x626)**: 241 bytes of unknown purpose
    between the sound name and audio data. Likely contains additional
    configuration or playback parameters.
+
+### DHE (X-clusive PROFI / Profi Soundbox)
+
+4. **DHE sound number mapping**: The exact mapping from track index pair
+   number to X-clusive PROFI sound number (1–112) is unknown. It likely
+   follows the order in the sound numbering table but may depend on
+   locomotive type.
+
+5. **DHE post-name metadata (0x03C bytes 0–2)**: These 3 bytes vary per
+   file and their meaning is unknown (possibly checksum or audio length).
+
+6. **DHE file metadata (0x00C–0x00D)**: These 2 bytes vary per file.
+   They may encode timing parameters or additional type information.
+
+7. **DHE configuration blocks**: The exact mapping from bytes in the 0x080
+   and 0x0C0 regions to SUSI CV numbers has not been determined.
+
+8. **DHE per-sound config (0x400)**: The purpose of individual bytes in
+   this 360-byte region is unknown, though values match CV-like parameters.
