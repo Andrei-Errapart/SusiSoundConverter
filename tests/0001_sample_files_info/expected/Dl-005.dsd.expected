@@ -1,0 +1,85 @@
+=== /home/andrei/2026/SusiSoundConverter/test_data/Dl-005.dsd ===
+File size: 464482 bytes
+Magic: DD 33 (valid IntelliSound)
+Format tag: FF FF (DS3)
+Audio region: 0x000300–0x071662 (463714 bytes, 35.6s at 13021 Hz)
+Flash usage: 464482 / 4194304 bytes (3729822 free)
+
+--- Primary track index (0x004–0x093, 48 entries) ---
+Entries used: 40 / 48
+
+  Entry    Offset      Size  Duration     CRC32  Enc
+  -----  --------  --------  --------  --------  ---
+      0  0x000300      8591  0.660s        7CB35E6C  XOR
+      1  0x00248F     15020  1.154s        A28D97EE  XOR
+      2  0x005F3B     14875  1.142s        4204D4C9  XOR
+      3  0x005F3B     14875  1.142s        4204D4C9  XOR
+      4  0x009956      7482  0.575s        A0116EC7  XOR
+      5  0x00B690     51039  3.920s        D10FB956  XOR
+      6  0x017DEF       181  0.014s        10677EC9  XOR
+      7  0x017EA4     55548  4.266s        14C972AE  XOR
+      8  0x0257A0      9170  0.704s        8C9E81B4  XOR
+      9  0x027B72     49389  3.793s        33AC0FF1  XOR
+     10  0x033C5F         1  0.000s        D202EF8D  raw
+     11  0x033C5F         1  0.000s        D202EF8D  raw
+     12  0x033C60         1  0.000s        D202EF8D  raw
+     13  0x033C60         1  0.000s        D202EF8D  raw
+     14  0x033C61         1  0.000s        D202EF8D  raw
+     15  0x033C61         1  0.000s        D202EF8D  raw
+     16  0x033C62         1  0.000s        D202EF8D  raw
+     17  0x033C62         1  0.000s        D202EF8D  raw
+     18  0x033C63     27309  2.097s        7FB80919  XOR
+     19  0x03A710     38658  2.969s        B11ED2DA  XOR
+     20  0x043E12     21315  1.637s        C582F2DC  XOR
+     21  0x043E12     21315  1.637s        C582F2DC  XOR
+     22  0x049155         1  0.000s        D202EF8D  raw
+     23  0x049155         1  0.000s        D202EF8D  raw
+     24  0x049156     48953  3.760s        82A706E4  XOR
+     25  0x049156     48953  3.760s        82A706E4  XOR
+     26  0x05508F     29897  2.296s        82CA08A1  XOR
+     27  0x05C558      4856  0.373s        0275E1F4  XOR
+     28  0x05D850         1  0.000s        D202EF8D  raw
+     29  0x05D850         1  0.000s        D202EF8D  raw
+     30  0x05D851         1  0.000s        D202EF8D  raw
+     31  0x05D851         1  0.000s        D202EF8D  raw
+     32  0x05D852         1  0.000s        D202EF8D  raw
+     33  0x05D852         1  0.000s        D202EF8D  raw
+     34  0x05D853         1  0.000s        D202EF8D  raw
+     35  0x05D853         1  0.000s        D202EF8D  raw
+     36  0x05D854         1  0.000s        D202EF8D  raw
+     37  0x05D854         1  0.000s        D202EF8D  raw
+     38  0x05D855         1  0.000s        D202EF8D  raw
+     39  0x05D855         1  0.000s        D202EF8D  raw
+
+--- Extended track index (0x100–0x177, 40 entries, 20 pairs) ---
+Entries used: 40 / 40
+
+  Pair    Addr A    Addr B      Size  Duration     CRC32  Enc
+  ----  --------  --------  --------  --------  --------  ---
+     0  0x05D856  0x05D856      4877  0.375s        E74881BA  XOR
+     1  0x05EB63  0x05EB63      4255  0.327s        3134CA88  XOR
+     2  0x05FC02  0x05FC02      4917  0.378s        CEF7E50F  XOR
+     3  0x060F37  0x060F37         1  0.000s        D202EF8D  raw
+     4  0x060F38  0x060F38      4897  0.376s        5E846D01  XOR
+     5  0x062259  0x062259      5807  0.446s        2497ED56  XOR
+     6  0x063908  0x063908      6037  0.464s        BD0B50AA  XOR
+     7  0x06509D  0x06509D         1  0.000s        D202EF8D  raw
+     8  0x06509E  0x06509E      7931  0.609s        D2B4D621  XOR
+     9  0x066F99  0x066F99      7753  0.595s        40EF780D  XOR
+    10  0x068DE2  0x068DE2      6551  0.503s        D0688AD7  XOR
+    11  0x06A779  0x06A779         1  0.000s        D202EF8D  raw
+    12  0x06A77A  0x06A77A      4913  0.377s        64926C8D  XOR
+    13  0x06BAAB  0x06BAAB      4323  0.332s        266E6031  XOR
+    14  0x06CB8E  0x06CB8E      4959  0.381s        0C558329  XOR
+    15  0x06DEED  0x06DEED         1  0.000s        D202EF8D  raw
+    16  0x06DEEE  0x06DEEE      4913  0.377s        5A07B8AA  XOR
+    17  0x06F21F  0x06F21F      4323  0.332s        5963EEB9  XOR
+    18  0x070302  0x070302      4959  0.381s        44C8F067  XOR
+    19  0x071661  0x071661         1  0.000s        D202EF8D  raw
+
+--- Configuration (0x0CE–0x0FF, 50 bytes, XOR-decoded) ---
+  0x0CE: 81 81 01 FF FF 04 FF FF 02 00 00 07 FF 37 1B 83
+  0x0DE: 7D 03 29 32 6B 76 D8 E3 14 1C 50 5D 96 A1 03 11
+  0x0EE: 3C 4B AF CF 00 00 00 00 00 00 07 06 05 04 03 02
+  0x0FE: 01 21
+

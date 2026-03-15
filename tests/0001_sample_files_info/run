@@ -27,7 +27,7 @@ normalize() {
 failed=0
 tested=0
 
-for sound_file in "$REPO_ROOT"/test_data/*.DS3 "$REPO_ROOT"/test_data/*.DX4 "$REPO_ROOT"/test_data/*.DS6 "$REPO_ROOT"/test_data/*.DSU; do
+for sound_file in "$REPO_ROOT"/test_data/*.{DS3,ds3,DX4,dx4,DS6,ds6,DSU,dsu,DSD,dsd}; do
     [[ -f "$sound_file" ]] || continue
 
     base="$(basename "$sound_file")"
