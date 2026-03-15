@@ -1,3 +1,5 @@
+[![Tested](https://github.com/Andrei-Errapart/SusiSoundConverter/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Andrei-Errapart/SusiSoundConverter/actions/workflows/deploy-pages.yml)
+
 # Introduction
 
 The program SusiSoundConverter is for the conversion of DS3 sound files into DX4 files.

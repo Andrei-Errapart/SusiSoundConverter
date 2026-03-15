@@ -23,13 +23,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: master
+
+      - name: Build Zig executables
+        run: zig build
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install web dependencies
         working-directory: web
         run: npm ci
+
+      - name: Run all tests
+        run: tests/run
 
       - name: Build
         working-directory: web
