@@ -5,9 +5,9 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "convertsound",
+        .name = "build_dsu",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/convertsound.zig"),
+            .root_source_file = b.path("src/build_dsu.zig"),
             .target = target,
             .optimize = optimize,
         }),
@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(info);
 
-    const run_step = b.step("run", "Run convertsound");
+    const run_step = b.step("run", "Run build_dsu");
     const run_cmd = b.addRunArtifact(exe);
     run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
