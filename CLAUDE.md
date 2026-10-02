@@ -32,7 +32,7 @@ npm run build                        # vue-tsc --noEmit + vite build
 npx vite                             # dev server
 ```
 
-- Zig 0.16 is required (`build.zig.zon` minimum is a 0.16-dev build; CI uses `master`). The code uses the 0.16 `std.Io` API (`pub fn main(init: std.process.Init)`, `Io.Dir`, `Io.File.Writer`), so older-Zig idioms will not compile.
+- Zig 0.16.x is required; CI is pinned to 0.16.0. The code uses the 0.16 `std.Io` API (`pub fn main(init: std.process.Init)`, `Io.Dir`, `Io.File.Writer`), so older-Zig idioms will not compile, and `build.zig` uses `b.args`, which Zig 0.17 removed.
 - `npm run dev` hardcodes `--host 192.168.178.46`; use `npx vite` when that address is not available.
 - There is no root `.gitignore`, so `zig-out/` and `.zig-cache/` show up as untracked. Don't commit them.
 

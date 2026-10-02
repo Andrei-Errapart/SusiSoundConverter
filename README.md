@@ -36,8 +36,9 @@ Verschlüsselte Dateien (Magic `00 FF`) werden nicht unterstützt.
 
 # Bauen
 
-Die Kommandozeilenprogramme sind in Zig geschrieben und benötigen Zig 0.16
-oder neuer. Es gibt keine weiteren Abhängigkeiten.
+Die Kommandozeilenprogramme sind in Zig geschrieben und benötigen Zig 0.16.x
+(mit Zig 0.17 lässt sich `build.zig` derzeit nicht übersetzen). Es gibt keine
+weiteren Abhängigkeiten.
 
     zig build
 
