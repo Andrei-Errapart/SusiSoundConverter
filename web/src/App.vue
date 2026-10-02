@@ -35,7 +35,7 @@ onUnmounted(() => {
 <template>
   <div class="app">
     <header class="app-header">
-      <h1>IntelliSound Web Editor</h1>
+      <h1>IntelliSound Web-Editor</h1>
     </header>
     <div class="panes">
       <div @click="lastFocusedSide = 'left'" @focusin="lastFocusedSide = 'left'">

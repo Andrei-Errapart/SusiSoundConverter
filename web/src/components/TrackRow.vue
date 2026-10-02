@@ -85,7 +85,7 @@ function displayIndex(): string {
     <td class="col-index">{{ displayIndex() }}</td>
     <td class="col-size">
       <template v-if="track && track.audio.length > 0">
-        {{ track.audio.length.toLocaleString() }}
+        {{ track.audio.length.toLocaleString('de-DE') }}
       </template>
       <template v-else-if="track">0</template>
       <template v-else>&mdash;</template>
@@ -98,7 +98,7 @@ function displayIndex(): string {
     </td>
     <td v-if="isPaired" class="col-loop">
       <template v-if="track && track.loopOffset > 0">
-        {{ track.loopOffset.toLocaleString() }}
+        {{ track.loopOffset.toLocaleString('de-DE') }}
       </template>
       <template v-else>&mdash;</template>
     </td>
@@ -114,7 +114,7 @@ function displayIndex(): string {
         :class="{ playing: track && isTrackPlaying(side, tableKind, index) }"
         :disabled="!track || track.audio.length === 0"
         @click="handlePlay"
-        :title="track && isTrackPlaying(side, tableKind, index) ? 'Stop' : 'Play'"
+        :title="track && isTrackPlaying(side, tableKind, index) ? 'Stopp' : 'Abspielen'"
       >
         {{ track && isTrackPlaying(side, tableKind, index) ? '\u25A0' : '\u25B6' }}
       </button>
@@ -122,7 +122,7 @@ function displayIndex(): string {
         class="btn-overwrite"
         :disabled="!canOverwrite()"
         @click="handleOverwrite"
-        title="Overwrite with selected track"
+        title="Mit ausgewähltem Track überschreiben"
       >
         &larr;
       </button>
@@ -130,7 +130,7 @@ function displayIndex(): string {
         class="btn-import"
         :disabled="!track"
         @click="handleImportClick"
-        title="Import audio file (WAV, MP3)"
+        title="Audiodatei importieren (WAV, MP3)"
       >
         &#x1F4C2;
       </button>

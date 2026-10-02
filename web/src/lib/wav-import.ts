@@ -61,10 +61,10 @@ export function importWav(
 
   // --- Parse WAV header ---
   if (view.getUint32(0, false) !== 0x52494646) { // "RIFF"
-    throw new Error('Not a WAV file (missing RIFF header)')
+    throw new Error('Keine WAV-Datei (RIFF-Header fehlt)')
   }
   if (view.getUint32(8, false) !== 0x57415645) { // "WAVE"
-    throw new Error('Not a WAV file (missing WAVE marker)')
+    throw new Error('Keine WAV-Datei (WAVE-Kennung fehlt)')
   }
 
   // Find fmt and data chunks
@@ -96,16 +96,16 @@ export function importWav(
   }
 
   if (audioFormat !== 1) {
-    throw new Error(`Unsupported WAV format (audioFormat=${audioFormat}, expected PCM=1)`)
+    throw new Error(`Nicht unterstütztes WAV-Format (audioFormat=${audioFormat}, erwartet PCM=1)`)
   }
   if (dataOffset === 0 || dataSize === 0) {
-    throw new Error('WAV file has no data chunk')
+    throw new Error('WAV-Datei enthält keinen data-Chunk')
   }
   if (numChannels < 1 || numChannels > 2) {
-    throw new Error(`Unsupported channel count: ${numChannels}`)
+    throw new Error(`Nicht unterstützte Kanalanzahl: ${numChannels}`)
   }
   if (![8, 16, 24].includes(bitsPerSample)) {
-    throw new Error(`Unsupported bit depth: ${bitsPerSample}`)
+    throw new Error(`Nicht unterstützte Bittiefe: ${bitsPerSample}`)
   }
 
   // Already in target format — return raw data directly

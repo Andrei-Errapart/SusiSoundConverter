@@ -12,7 +12,7 @@ Reverse-engineering of the proprietary sound-file formats used by Dietz / Uhlenb
   - `build_dsu PROJECT.dsp` — builds a `.DSU` (DS3 base + up to 12 user WAV slots) next to the `.dsp` file and prints a log to stdout.
 - `web/` — Vue 3 + TypeScript two-pane editor, deployed to GitHub Pages. It has its own `web/CLAUDE.md` with its architecture and conventions; read that when working there.
 
-The root `README.md` is written in German; keep it in German when updating it. `web/README.md` and the format spec are in English.
+`README.md` and `web/README.md` are written in German; keep them in German when updating them. The web editor's UI strings are German too (see `web/CLAUDE.md`). The format spec and all code comments are in English.
 
 ## Commands
 

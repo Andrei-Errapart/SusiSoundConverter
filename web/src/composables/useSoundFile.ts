@@ -45,7 +45,7 @@ export function useSoundFile() {
       if (e instanceof ParseError) {
         error.value = e.message
       } else {
-        error.value = `Failed to load file: ${e}`
+        error.value = `Datei konnte nicht geladen werden: ${e}`
       }
       file.value = null
     } finally {
@@ -58,13 +58,13 @@ export function useSoundFile() {
     try {
       const data = serializeFile(file.value)
       if (data.length > file.value.flashSize) {
-        error.value = `Export size (${data.length}) exceeds flash capacity (${file.value.flashSize})`
+        error.value = `Exportgröße (${data.length} Bytes) überschreitet die Flash-Kapazität (${file.value.flashSize} Bytes)`
         return
       }
       downloadFile(data, file.value.filename)
       file.value.dirty = false
     } catch (e) {
-      error.value = `Export failed: ${e}`
+      error.value = `Export fehlgeschlagen: ${e}`
     }
   }
 

@@ -42,7 +42,7 @@ function decodeAudioSlice(data: Uint8Array, start: number, size: number): Uint8A
 
 export function parseFile(data: Uint8Array, filename: string): SoundFile {
   if (data.length < 4) {
-    throw new ParseError(`File too small (${data.length} bytes)`)
+    throw new ParseError(`Datei zu klein (${data.length} Bytes)`)
   }
 
   // Check DHE magic: 0x22 0x57
@@ -51,15 +51,15 @@ export function parseFile(data: Uint8Array, filename: string): SoundFile {
   }
 
   if (data.length < DS3_HEADER_SIZE) {
-    throw new ParseError(`File too small (${data.length} bytes, need at least ${DS3_HEADER_SIZE})`)
+    throw new ParseError(`Datei zu klein (${data.length} Bytes, mindestens ${DS3_HEADER_SIZE} erforderlich)`)
   }
 
   // Check magic: byte[1] must be 0x33, byte[0] is 0xDD (Dietz) or 0xE1 (Uhlenbrock)
   if ((data[0] !== 0xDD && data[0] !== 0xE1) || data[1] !== 0x33) {
     if (data[0] === 0x00 && data[1] === 0xFF) {
-      throw new ParseError('Encrypted file — not supported')
+      throw new ParseError('Verschlüsselte Datei — nicht unterstützt')
     }
-    throw new ParseError(`Invalid magic: ${hex2(data[0])} ${hex2(data[1])}`)
+    throw new ParseError(`Ungültige Dateikennung (Magic): ${hex2(data[0])} ${hex2(data[1])}`)
   }
 
   // Check format tag
@@ -210,7 +210,7 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
 
   tables.push({
     kind: 'primary',
-    label: `Primary (${PRIMARY_COUNT} entries)`,
+    label: `Primär (${PRIMARY_COUNT} Einträge)`,
     entryCount: PRIMARY_COUNT,
     isPaired: false,
     slots: primarySlots,
@@ -241,7 +241,7 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
 
     tables.push({
       kind: 'middle',
-      label: `Middle (${MIDDLE_COUNT / 2} pairs)`,
+      label: `Mitte (${MIDDLE_COUNT / 2} Paare)`,
       entryCount: MIDDLE_COUNT,
       isPaired: true,
       slots: middleSlots,
@@ -271,7 +271,7 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
 
   tables.push({
     kind: 'extended',
-    label: `Extended (${EXTENDED_COUNT / 2} pairs)`,
+    label: `Erweitert (${EXTENDED_COUNT / 2} Paare)`,
     entryCount: EXTENDED_COUNT,
     isPaired: true,
     slots: extSlots,
@@ -294,7 +294,7 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
 
     tables.push({
       kind: 'dsu',
-      label: 'User Sounds (4 sounds × 3 segments)',
+      label: 'Benutzersounds (4 Sounds × 3 Segmente)',
       entryCount: DSU_SLOT_COUNT,
       isPaired: false,
       slots: dsuSlots,
@@ -323,7 +323,7 @@ function parseDS3Family(data: Uint8Array, filename: string): SoundFile {
 
 function parseDS6(data: Uint8Array, filename: string): SoundFile {
   if (data.length < DS6_HEADER_SIZE) {
-    throw new ParseError(`DS6 file too small (${data.length} bytes, need at least ${DS6_HEADER_SIZE})`)
+    throw new ParseError(`DS6-Datei zu klein (${data.length} Bytes, mindestens ${DS6_HEADER_SIZE} erforderlich)`)
   }
 
   // DS6: XOR-decode the entire file into a working buffer
@@ -452,7 +452,7 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
 
   tables.push({
     kind: 'primary',
-    label: `Primary (${DS6_PRIMARY_COUNT} entries)`,
+    label: `Primär (${DS6_PRIMARY_COUNT} Einträge)`,
     entryCount: DS6_PRIMARY_COUNT,
     isPaired: false,
     slots: buildSlots(primaryAddrs, 'primary'),
@@ -460,7 +460,7 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
 
   tables.push({
     kind: 'ds6_ext1',
-    label: `Extended 1 (${DS6_EXT1_COUNT / 2} pairs)`,
+    label: `Erweitert 1 (${DS6_EXT1_COUNT / 2} Paare)`,
     entryCount: DS6_EXT1_COUNT,
     isPaired: true,
     slots: buildSlots(ext1Addrs, 'ds6_ext1'),
@@ -468,7 +468,7 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
 
   tables.push({
     kind: 'ds6_ext2',
-    label: `Extended 2 (${DS6_EXT2_COUNT / 2} pairs)`,
+    label: `Erweitert 2 (${DS6_EXT2_COUNT / 2} Paare)`,
     entryCount: DS6_EXT2_COUNT,
     isPaired: true,
     slots: buildSlots(ext2Addrs, 'ds6_ext2'),
@@ -476,7 +476,7 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
 
   tables.push({
     kind: 'ds6_ext3',
-    label: `Extended 3 (${DS6_EXT3_COUNT / 2} pairs)`,
+    label: `Erweitert 3 (${DS6_EXT3_COUNT / 2} Paare)`,
     entryCount: DS6_EXT3_COUNT,
     isPaired: true,
     slots: buildSlots(ext3Addrs, 'ds6_ext3'),
@@ -505,7 +505,7 @@ function parseDS6(data: Uint8Array, filename: string): SoundFile {
 
 function parseDHE(data: Uint8Array, filename: string): SoundFile {
   if (data.length < DHE_HEADER_SIZE) {
-    throw new ParseError(`DHE file too small (${data.length} bytes, need at least ${DHE_HEADER_SIZE})`)
+    throw new ParseError(`DHE-Datei zu klein (${data.length} Bytes, mindestens ${DHE_HEADER_SIZE} erforderlich)`)
   }
 
   // XOR-decode entire file
@@ -609,7 +609,7 @@ function parseDHE(data: Uint8Array, filename: string): SoundFile {
 
   const tables: TrackTable[] = [{
     kind: 'dhe_tracks',
-    label: `Tracks (${realCount} sounds)`,
+    label: `Tracks (${realCount} Sounds)`,
     entryCount: dheRecords.length,
     isPaired: false,
     slots,

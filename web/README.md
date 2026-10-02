@@ -1,102 +1,102 @@
-# IntelliSound Web Editor
+# IntelliSound Web-Editor
 
-Browser-based viewer and editor for Dietz/Uhlenbrock IntelliSound and X-clusive PROFI sound files.
+Browserbasierter Betrachter und Editor für Sounddateien der Formate Dietz/Uhlenbrock IntelliSound und X-clusive PROFI.
 
-**Live:** <https://Andrei-Errapart.github.io/SusiSoundConverter/>
+**Online:** <https://Andrei-Errapart.github.io/SusiSoundConverter/>
 
-## Supported formats
+## Unterstützte Formate
 
-| Format family | Extensions | Audio | Flash |
-|---------------|-----------|-------|-------|
-| IntelliSound | `.DS3`, `.DX4`, `.DSU`, `.DS6` (and `.DS4`, `.DSD`) | 8-bit unsigned mono, 13,021 Hz | 32/64 Mbit (4/8 MB) |
-| X-clusive PROFI | `.DHE` | 16-bit signed mono, 22,050 Hz | 128 Mbit (16 MB) |
+| Formatfamilie | Endungen | Audio | Flash |
+|---------------|----------|-------|-------|
+| IntelliSound | `.DS3`, `.DX4`, `.DSU`, `.DS6` (sowie `.DS4`, `.DSD`) | 8 Bit vorzeichenlos, mono, 13.021 Hz | 32/64 Mbit (4/8 MB) |
+| X-clusive PROFI | `.DHE` | 16 Bit vorzeichenbehaftet, mono, 22.050 Hz | 128 Mbit (16 MB) |
 
-ZIP archives containing sound files are also supported — the editor extracts the sound file automatically.
+ZIP-Archive, die Sounddateien enthalten, werden ebenfalls unterstützt — der Editor entpackt die Sounddatei automatisch.
 
-## Layout
+## Aufbau
 
-The editor shows **two panes side by side**. Each pane can load a sound file independently, allowing you to compare files and copy tracks between them — even across different formats (IntelliSound and DHE).
+Der Editor zeigt **zwei Bereiche nebeneinander**. In jeden Bereich kann unabhängig eine Sounddatei geladen werden, sodass sich Dateien vergleichen und Tracks zwischen ihnen kopieren lassen — auch zwischen verschiedenen Formaten (IntelliSound und DHE).
 
-Each pane contains:
-- **File toolbar** — Load, Paste, and Export buttons, filename, format badge, dirty-flag indicator
-- **Flash usage bar** — visual capacity gauge
-- **Track tables** — one section per track table in the file (primary, extended, middle, etc.)
+Jeder Bereich enthält:
+- **Werkzeugleiste** — Schaltflächen „Datei laden“, „Aus Zwischenablage laden (URL)“ und „Exportieren“, Dateiname, Formatkennzeichen, Kennzeichen „geändert“ bei ungespeicherten Änderungen
+- **Flash-Belegungsbalken** — grafische Anzeige der Speicherauslastung
+- **Track-Tabellen** — ein Abschnitt je Track-Tabelle der Datei (Primär, Erweitert, Mitte usw.)
 
-## Workflows
+## Arbeitsabläufe
 
-### Load and inspect a file
+### Datei laden und ansehen
 
-Click **Load** in either pane and pick a sound file (or a ZIP containing one). The track tables appear with all tracks listed. The flash usage bar shows how much of the device's flash memory is consumed.
+In einem der beiden Bereiche auf **Datei laden** klicken und eine Sounddatei (oder ein ZIP-Archiv, das eine enthält) auswählen. Die Track-Tabellen erscheinen mit allen Tracks. Der Flash-Belegungsbalken zeigt, wie viel vom Flash-Speicher des Moduls belegt ist.
 
-### Play a track
+### Track abspielen
 
-Click **▶** on any non-empty track row to hear it. The row highlights yellow during playback. Click **■** to stop. Only one track plays at a time — starting another stops the previous one.
+Bei einer nicht leeren Track-Zeile auf **▶** klicken, um den Track anzuhören. Die Zeile wird während der Wiedergabe gelb hervorgehoben. Mit **■** wird die Wiedergabe gestoppt. Es spielt immer nur ein Track — der Start eines weiteren stoppt den vorherigen.
 
-### Copy a track between files
+### Track zwischen Dateien kopieren
 
-1. Click a non-empty track row in one pane — it highlights **green** to indicate selection.
-2. In the other pane, click **←** on the target track row to overwrite it with the selected track's audio and loop offset.
-3. Press **Esc** at any time to cancel the selection.
+1. In einem Bereich auf eine nicht leere Track-Zeile klicken — sie wird **grün** hervorgehoben und ist damit ausgewählt.
+2. Im anderen Bereich bei der Ziel-Zeile auf **←** klicken, um sie mit den Audiodaten und dem Schleifen-Offset des ausgewählten Tracks zu überschreiben.
+3. Mit **Esc** lässt sich die Auswahl jederzeit aufheben.
 
-When copying between IntelliSound and DHE files, audio is automatically resampled and converted (8-bit 13,021 Hz to/from 16-bit 22,050 Hz).
+Beim Kopieren zwischen IntelliSound- und DHE-Dateien werden die Audiodaten automatisch umgerechnet (8 Bit 13.021 Hz von/nach 16 Bit 22.050 Hz).
 
-### Paste a URL or file
+### URL oder Datei einfügen
 
-Click **Paste** to load a sound file from the clipboard. The button detects the clipboard content and acts accordingly:
+Mit **Aus Zwischenablage laden (URL)** wird eine Sounddatei aus der Zwischenablage geladen. Die Schaltfläche erkennt den Inhalt der Zwischenablage und verhält sich entsprechend:
 
-- **URL** — If the clipboard contains an `http://` or `https://` URL (e.g. `https://d-i-e-t-z.de/sounds/DL-USA.DS3`), the file is fetched and loaded directly. ZIP URLs are supported too.
-- **Copied hyperlink** — If you copy a download link from a web page, the editor extracts the URL from the HTML and fetches it.
-- **File via Ctrl+V** — If you copy a file in your OS file manager and press Ctrl+V, the file is loaded into the last-focused pane.
-- **Fallback** — On browsers that restrict clipboard access (e.g. Safari), a prompt dialog asks you to paste the URL manually.
+- **URL** — Enthält die Zwischenablage eine `http://`- oder `https://`-URL (z. B. `https://d-i-e-t-z.de/sounds/DL-USA.DS3`), wird die Datei direkt abgerufen und geladen. URLs von ZIP-Archiven funktionieren ebenfalls.
+- **Kopierter Hyperlink** — Wird ein Download-Link von einer Webseite kopiert, liest der Editor die URL aus dem HTML und ruft sie ab.
+- **Datei per Strg+V** — Wird eine Datei im Dateimanager des Betriebssystems kopiert und Strg+V gedrückt, wird sie in den zuletzt aktiven Bereich geladen.
+- **Ausweichlösung** — In Browsern, die den Zugriff auf die Zwischenablage einschränken (z. B. Safari), fragt ein Dialog nach der URL zum manuellen Einfügen.
 
-**CORS limitation:** Most sound file hosting sites don't allow cross-origin requests. During local development (`npm run dev`), Vite's built-in CORS proxy handles this transparently. On the GitHub Pages deployment, the editor attempts free CORS proxy services (corsproxy.io, allorigins.win), but these are unreliable and may fail. A proper solution would be to deploy a dedicated CORS proxy, e.g. a Cloudflare Worker (free tier: 100k requests/day).
+**CORS-Einschränkung:** Die meisten Websites, die Sounddateien anbieten, erlauben keine Cross-Origin-Anfragen. Bei der lokalen Entwicklung (`npm run dev`) übernimmt das der in Vite eingebaute CORS-Proxy transparent. In der GitHub-Pages-Version versucht der Editor kostenlose CORS-Proxy-Dienste (corsproxy.io, allorigins.win), die jedoch unzuverlässig sind und ausfallen können. Eine saubere Lösung wäre ein eigener CORS-Proxy, z. B. ein Cloudflare Worker (kostenloses Kontingent: 100.000 Anfragen pro Tag).
 
-### Import a WAV or MP3 file
+### WAV- oder MP3-Datei importieren
 
-Click **📁** on any track row, then pick a `.wav` or `.mp3` file. The audio is automatically converted to the target file's native format:
+Bei einer beliebigen Track-Zeile auf **📁** klicken und eine `.wav`- oder `.mp3`-Datei auswählen. Die Audiodaten werden automatisch in das Format der Zieldatei umgerechnet:
 
-- **IntelliSound files:** 8-bit unsigned mono at 13,021 Hz
-- **DHE files:** 16-bit signed mono at 22,050 Hz
+- **IntelliSound-Dateien:** 8 Bit vorzeichenlos, mono, 13.021 Hz
+- **DHE-Dateien:** 16 Bit vorzeichenbehaftet, mono, 22.050 Hz
 
-WAV files must be 8-, 16-, or 24-bit PCM; stereo is mixed down to mono. MP3 decoding uses the browser's built-in audio decoder.
+WAV-Dateien müssen 8-, 16- oder 24-Bit-PCM enthalten; Stereo wird zu Mono zusammengemischt. MP3-Dateien werden mit dem eingebauten Audiodecoder des Browsers dekodiert.
 
-### Export
+### Exportieren
 
-Click **Export** to download the modified file. The editor validates that total data fits within the device's flash capacity (4 MB, 8 MB, or 16 MB depending on format) before saving. The dirty-flag indicator clears on successful export.
+Mit **Exportieren** wird die geänderte Datei heruntergeladen. Vor dem Speichern prüft der Editor, ob die gesamten Daten in den Flash-Speicher des Moduls passen (4 MB, 8 MB oder 16 MB, je nach Format). Das Kennzeichen „geändert“ verschwindet nach erfolgreichem Export.
 
-## Track table columns
+## Spalten der Track-Tabelle
 
-| Column | Description |
-|--------|-------------|
-| **#** | Track index. For paired tables, shows `floor(index / 2)`. |
-| **Size** | Audio data size in bytes. |
-| **Duration** | Playback duration (computed from size, sample rate, and bit depth). |
-| **Loop** | Loop offset in bytes (paired tables only). |
-| **CRC32** | 8-hex-digit fingerprint of the audio data — useful for spotting duplicates. |
-| **Actions** | ▶/■ play/stop, ← overwrite from selection, 📁 import from file. |
+| Spalte | Beschreibung |
+|--------|--------------|
+| **#** | Track-Index. Bei gepaarten Tabellen wird `floor(index / 2)` angezeigt. |
+| **Größe** | Größe der Audiodaten in Bytes. |
+| **Dauer** | Abspieldauer (berechnet aus Größe, Abtastrate und Bittiefe). |
+| **Schleife** | Schleifen-Offset in Bytes (nur bei gepaarten Tabellen). |
+| **CRC32** | Achtstelliger hexadezimaler Fingerabdruck der Audiodaten — hilfreich, um Duplikate zu erkennen. |
+| **Aktionen** | ▶/■ abspielen/stoppen, ← mit der Auswahl überschreiben, 📁 aus Datei importieren. |
 
-Empty track slots show dashes (–) in the data columns. Each table header shows a usage count like "12 / 48 used".
+Leere Track-Plätze zeigen in den Datenspalten Striche (–). Im Kopf jeder Tabelle steht eine Belegungsangabe wie „12 / 48 belegt“.
 
-## Flash usage bar
+## Flash-Belegungsbalken
 
-The bar is color-coded by capacity:
+Der Balken ist nach Auslastung eingefärbt:
 
-| Usage | Color |
-|-------|-------|
-| 0–90% | Blue |
-| 90–98% | Orange |
-| > 98% | Red |
+| Auslastung | Farbe |
+|------------|-------|
+| 0–90 % | Blau |
+| 90–98 % | Orange |
+| > 98 % | Rot |
 
-A label below shows exact kilobytes used, total capacity, and free space.
+Darunter stehen die belegten Kilobytes, die Gesamtkapazität und der freie Speicher.
 
-## Development
+## Entwicklung
 
 ```bash
-npm run dev       # Vite dev server with hot reload
-npm run build     # Type-check (vue-tsc) + production build
-npm run test      # Run Vitest test suite
+npm run dev       # Vite-Entwicklungsserver mit Hot Reload
+npm run build     # Typprüfung (vue-tsc) + Produktions-Build
+npm run test      # Vitest-Testsuite ausführen
 ```
 
-The dev server includes a local CORS proxy at `/cors-proxy/` so that pasting download URLs works without external proxy services. Proxied requests are logged to the terminal.
+Der Entwicklungsserver enthält einen lokalen CORS-Proxy unter `/cors-proxy/`, sodass das Einfügen von Download-URLs ohne externe Proxy-Dienste funktioniert. Weitergeleitete Anfragen werden im Terminal protokolliert.
 
-Built with Vue 3, TypeScript, and Vite.
+Erstellt mit Vue 3, TypeScript und Vite.

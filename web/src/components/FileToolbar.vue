@@ -38,26 +38,26 @@ function onFileSelected(e: Event) {
       style="display:none"
       @change="onFileSelected"
     />
-    <button class="btn" @click="openFilePicker">Load File</button>
+    <button class="btn" @click="openFilePicker">Datei laden</button>
     <button
       class="btn"
       :disabled="loading"
       @click="$emit('paste')"
     >
-      {{ loading ? 'Loading\u2026' : 'Load from Clipboard (URL)' }}
+      {{ loading ? 'Lädt\u2026' : 'Aus Zwischenablage laden (URL)' }}
     </button>
     <button
       class="btn"
       :disabled="!file"
       @click="$emit('export')"
     >
-      Export
+      Exportieren
     </button>
     <span v-if="file" class="file-info">
       <strong>{{ file.filename }}</strong>
       <span class="format-badge">{{ file.format }}</span>
-      <span v-if="file.dirty" class="dirty-badge">modified</span>
-      <span v-if="file.soundName" class="sound-name">"{{ file.soundName }}"</span>
+      <span v-if="file.dirty" class="dirty-badge">geändert</span>
+      <span v-if="file.soundName" class="sound-name">„{{ file.soundName }}“</span>
     </span>
     <span v-if="error" class="error-msg">{{ error }}</span>
   </div>

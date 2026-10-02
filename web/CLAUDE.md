@@ -61,6 +61,7 @@ src/
 - Events bubble up: TrackRow → TrackTable → FilePane (emit pattern)
 - Use `SAMPLE_RATE` / `DHE_SAMPLE_RATE` from constants.ts, never hardcode rates
 - The `dirty` flag on SoundFile controls whether `preAudioGap` is preserved on export (clean = byte-perfect roundtrip; dirty = gap dropped)
+- All user-visible text is German: labels, tooltips, table names, and error messages (including the ones thrown from `lib/`). Numbers use the German format (decimal comma, `toLocaleString('de-DE')`). There is no i18n layer; strings are inline. Code, comments, and identifiers stay English
 - Build must pass `vue-tsc --noEmit` with zero errors before merging
 
 ## Tests

@@ -49,7 +49,7 @@ async function readClipboardText(): Promise<string | null> {
     }
   }
   // Fallback: ask the user to paste the URL manually
-  const input = window.prompt('Paste a download URL:')
+  const input = window.prompt('Download-URL einfügen:')
   return input
 }
 
@@ -106,12 +106,12 @@ async function handlePaste(): Promise<void> {
 
     // If we got plain text but it wasn't a URL
     if (text) {
-      error.value = 'Clipboard text is not a URL. Copy a download link or file, then try again.'
+      error.value = 'Der Text in der Zwischenablage ist keine URL. Download-Link oder Datei kopieren und erneut versuchen.'
     } else if (text === null) {
       // User cancelled the prompt or clipboard was inaccessible
       error.value = null
     } else {
-      error.value = 'Clipboard is empty. Copy a download link or file, then try again.'
+      error.value = 'Die Zwischenablage ist leer. Download-Link oder Datei kopieren und erneut versuchen.'
     }
   } catch (e) {
     if (e instanceof ParseError) {
@@ -119,7 +119,7 @@ async function handlePaste(): Promise<void> {
     } else if (e instanceof Error) {
       error.value = e.message
     } else {
-      error.value = `Paste failed: ${e}`
+      error.value = `Einfügen fehlgeschlagen: ${e}`
     }
   } finally {
     loading.value = false
@@ -190,7 +190,7 @@ async function handleImportWav(tableKind: string, targetIndex: number, wavFile: 
     }
     file.value.dirty = true
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to import audio file'
+    error.value = e instanceof Error ? e.message : 'Audiodatei konnte nicht importiert werden'
   }
 }
 
@@ -221,7 +221,7 @@ defineExpose({ file, handlePasteFile })
       />
     </template>
     <div v-else class="empty-pane">
-      <p>Load a sound file (.DSD, .DS3, .DX4, .DSU, .DS6, .DHE, .ZIP)</p>
+      <p>Sounddatei laden (.DSD, .DS3, .DX4, .DSU, .DS6, .DHE, .ZIP)</p>
     </div>
   </div>
 </template>

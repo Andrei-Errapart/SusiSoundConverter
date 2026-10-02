@@ -22,7 +22,7 @@ const CORS_PROXIES = [
 export async function fetchSoundUrl(url: string): Promise<{ data: Uint8Array; filename: string }> {
   const parsed = new URL(url) // throws on invalid
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error('Only http and https URLs are supported')
+    throw new Error('Nur http- und https-URLs werden unterstützt')
   }
 
   const filename = decodeURIComponent(parsed.pathname.split('/').pop() || 'download.bin')
@@ -38,7 +38,7 @@ export async function fetchSoundUrl(url: string): Promise<{ data: Uint8Array; fi
   }
 
   throw new Error(
-    'Could not fetch URL. The server does not allow cross-origin requests and CORS proxies are unavailable.'
+    'URL konnte nicht abgerufen werden. Der Server erlaubt keine Cross-Origin-Anfragen und die CORS-Proxys sind nicht erreichbar.'
   )
 }
 

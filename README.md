@@ -17,7 +17,7 @@ Bestandteile:
 - **Web-Editor** (`web/`) — Browser-Anwendung zum Ansehen, Abspielen und
   Bearbeiten von Sounddateien. Online unter
   <https://Andrei-Errapart.github.io/SusiSoundConverter/>, Beschreibung in
-  [`web/README.md`](web/README.md) (englisch).
+  [`web/README.md`](web/README.md).
 - **Formatbeschreibung** — [`doc/SOUND_FILE_FORMAT.md`](doc/SOUND_FILE_FORMAT.md)
   (englisch, Status: Entwurf / unvollständig).
 

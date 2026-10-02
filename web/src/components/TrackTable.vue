@@ -63,15 +63,15 @@ function displayEntryCount(): number {
   <div class="track-table">
     <div class="table-header">
       <strong>{{ table.label }}</strong>
-      <span class="used-count">{{ usedCount() }} / {{ displayEntryCount() }} used</span>
+      <span class="used-count">{{ usedCount() }} / {{ displayEntryCount() }} belegt</span>
     </div>
     <table>
       <thead>
         <tr>
           <th class="col-index">#</th>
-          <th class="col-size">Size</th>
-          <th class="col-duration">Duration</th>
-          <th v-if="table.isPaired" class="col-loop">Loop</th>
+          <th class="col-size">Größe</th>
+          <th class="col-duration">Dauer</th>
+          <th v-if="table.isPaired" class="col-loop">Schleife</th>
           <th class="col-crc">CRC32</th>
           <th class="col-actions"></th>
         </tr>

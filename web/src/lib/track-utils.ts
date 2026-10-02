@@ -1,12 +1,12 @@
 import { SAMPLE_RATE } from './constants'
 
-/** Format a byte count as a duration string like "5.123s". */
+/** Format a byte count as a duration string like "5,123 s" (German decimal comma). */
 export function formatDuration(bytes: number, sampleRate: number = SAMPLE_RATE, bytesPerSample: number = 1): string {
   const samples = Math.floor(bytes / bytesPerSample)
   const msTotal = Math.round((samples * 1000) / sampleRate)
   const secs = Math.floor(msTotal / 1000)
   const ms = msTotal % 1000
-  return `${secs}.${String(ms).padStart(3, '0')}s`
+  return `${secs},${String(ms).padStart(3, '0')} s`
 }
 
 /** Compute total audio size across all tables in a file. */
